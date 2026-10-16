@@ -17,12 +17,14 @@ export function group(rows: Row[], by: GroupBy) {
 const n = (x: number) => x >= 1e6 ? `${(x / 1e6).toFixed(1)}M` : x >= 1e3 ? `${(x / 1e3).toFixed(1)}k` : String(x);
 export function table(rows: Row[], by: GroupBy): string {
   const g = group(rows, by);
-  const head = [by.toUpperCase(), 'AGENT', 'INPUT', 'OUTPUT', 'CACHE R', 'CACHE W', 'COST'];
-  const body = g.map(x => [x.key.length > 44 ? x.key.slice(0, 41) + '...' : x.key, x.agent, n(x.input), n(x.output), n(x.cacheRead), n(x.cacheWrite), `$${x.cost.toFixed(2)}${x.estimated ? '*' : ''}`]);
+  const showAgent = by !== 'agent';
+  const head = [by.toUpperCase(), ...(showAgent ? ['AGENT'] : []), 'INPUT', 'OUTPUT', 'CACHE R', 'CACHE W', 'COST'];
+  const body = g.map(x => [x.key.length > 44 ? x.key.slice(0, 41) + '...' : x.key, ...(showAgent ? [x.agent] : []), n(x.input), n(x.output), n(x.cacheRead), n(x.cacheWrite), `$${x.cost.toFixed(2)}${x.estimated ? '*' : ''}`]);
   const total = g.reduce((a, x) => a + x.cost, 0);
-  body.push(['TOTAL', '', '', '', '', '', `$${total.toFixed(2)}`]);
+  body.push(['TOTAL', ...(showAgent ? [''] : []), '', '', '', '', `$${total.toFixed(2)}`]);
+  const leftCols = showAgent ? 2 : 1;
   const w = head.map((h, i) => Math.max(h.length, ...body.map(r => r[i].length)));
-  const line = (r: string[]) => r.map((c, i) => i < 2 ? c.padEnd(w[i]) : c.padStart(w[i])).join('  ');
+  const line = (r: string[]) => r.map((c, i) => i < leftCols ? c.padEnd(w[i]) : c.padStart(w[i])).join('  ');
   const out = [line(head), w.map(x => '-'.repeat(x)).join('  '), ...body.map(line)];
   if (g.some(x => x.estimated)) out.push('* includes estimated tokens (Cursor bubbles without token counts)');
   out.push('Costs are estimates at API list prices; subscription plans are billed differently.');

@@ -4,9 +4,9 @@
   "description": "Budget fuse and runaway-loop killer for Claude Code, Codex CLI and Cursor",
   "main": "dist/cli.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && chmod +x dist/cli.js",
     "test": "node --import tsx --test test/*.test.ts",
-    "prepare": "tsc"
+    "prepare": "npm run build"
   },
   "keywords": [],
   "author": "",

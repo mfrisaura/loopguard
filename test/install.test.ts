@@ -62,3 +62,16 @@ test('refuses to touch invalid JSON config', () => {
   assert.throws(() => install('claude'), /not valid JSON/);
   assert.equal(fs.readFileSync(f, 'utf8'), '{ broken');
 });
+
+test('hookCommand prefers global `loopguard` bin that resolves to this install', () => {
+  sandbox();
+  const os = require('os');
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'lgbin-'));
+  const target = path.resolve(__dirname, '..', 'dist', 'cli.js');
+  fs.symlinkSync(target, path.join(bin, 'loopguard'));
+  const { globalBin } = require('../src/install');
+  assert.equal(globalBin(bin, target), 'loopguard');
+  const other = fs.mkdtempSync(path.join(os.tmpdir(), 'lgbin-'));
+  fs.writeFileSync(path.join(other, 'loopguard'), '#!/bin/sh\n'); // unrelated binary
+  assert.equal(globalBin(other, target), null);
+});

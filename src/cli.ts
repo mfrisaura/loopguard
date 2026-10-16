@@ -9,6 +9,7 @@ import { detectAgents, install, uninstall, configPath } from './install';
 import { loadConfig, setConfig, configFile } from './config';
 import { lgDir } from './paths';
 import { localDay, readJson, writeJson } from './util';
+import { sync, cloudFile, buildPayload } from './sync';
 
 const AGENTS: Agent[] = ['claude', 'codex', 'cursor'];
 const args = process.argv.slice(2);
@@ -31,6 +32,8 @@ Usage:
   loopguard status                               today's spend vs caps, recent trips
   loopguard config [get | set <key> <value>]     e.g. set sessionCapUsd 20, set loop.maxRepeats 6
   loopguard pause [minutes] | resume             temporarily bypass enforcement
+  loopguard login --key <api key> [--url https://...]  connect to dashboard (Pro)
+  loopguard sync [--dry-run]                     upload aggregate usage + trips; pull remote pause
   loopguard hook --agent <a> [--event <e>]       (called by agents; reads hook JSON on stdin)
 `;
 
@@ -114,6 +117,19 @@ async function main() {
       console.log(`Enforcement paused for ${min} min.`); return;
     }
     case 'resume': writeJson(path.join(lgDir(), 'pause.json'), {}); console.log('Enforcement resumed.'); return;
+    case 'login': {
+      const key = flag('key'); if (!key || !/^lg_[\w-]+$/.test(key)) throw new Error('--key lg_... required (create one in the dashboard)');
+      const url = flag('url') || process.env.LOOPGUARD_API || 'http://localhost:3000';
+      writeJson(cloudFile(), { ...readJson<any>(cloudFile(), {}), apiUrl: url, apiKey: key });
+      try { fs.chmodSync(cloudFile(), 0o600); } catch {}
+      console.log(`Saved credentials for ${url}. Run \`loopguard sync\`.`); return;
+    }
+    case 'sync': {
+      if (has('dry-run')) { console.log(JSON.stringify(await buildPayload(), null, 2)); return; }
+      const r = await sync();
+      console.log(`Synced ${r.rows} usage rows, ${r.trips} trips.${r.pausedUntil ? ` Remote pause until ${r.pausedUntil}.` : ''}`);
+      return;
+    }
     default: console.log(HELP);
   }
 }

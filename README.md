@@ -8,6 +8,10 @@ Budget fuse + runaway-loop killer for **Claude Code**, **Codex CLI** and **Curso
   all agents, and loop heuristics, and **denies the call / halts the session** when a limit trips.
 - Fails open: if LoopGuard itself errors, your agent keeps working (error logged to `~/.loopguard/errors.log`).
 
+Hooks call the global `loopguard` binary when it's on PATH and points at this install (e.g. `npm i -g loopguard`); otherwise `node /abs/path/dist/cli.js`. Never pinned to temporary `npx` caches.
+
+Dashboard, sync API, Stripe billing and landing page live in [`web/`](web/README.md).
+
 ## Install (local dev)
 ```bash
 npm install && npm run build
@@ -26,6 +30,8 @@ node dist/cli.js uninstall       # removes only LoopGuard entries; --restore put
 | `status` | Today's spend vs caps, which agents are guarded, last 5 trips. |
 | `config` / `config set <key> <value>` | e.g. `sessionCapUsd 20`, `dailyCapUsd 60`, `loop.maxRepeats 6`, `loop.enabled false`. |
 | `pause [min]` / `resume` | Temporarily bypass enforcement (default 15 min). |
+| `login --key lg_… --url <dashboard>` | Save dashboard API key (`~/.loopguard/cloud.json`, mode 600). |
+| `sync [--dry-run]` | Upload aggregate usage + trips (Pro); applies remote pause. `--dry-run` prints exactly what would be sent. |
 | `hook --agent <a> --event <e>` | Called by the agents (JSON on stdin). ~0.1 s per call. |
 
 ## Rules (defaults, `~/.loopguard/config.json`)
@@ -51,9 +57,9 @@ e.g. `{"my-model": {"input": 2, "output": 8, "cacheRead": 0.2, "cacheWrite": 0}}
 subscription plans (Claude Max, ChatGPT, Cursor Pro) are not billed per token.
 
 ## Tests
-`npm test` → 20 tests: parsers against fixture logs (`test/fixtures/`), pricing, install/uninstall/restore for all three
+`npm test` → 24 tests: parsers against fixture logs (`test/fixtures/`), pricing, install/uninstall/restore for all three
 agents, caps, loop + spiral detection, pause, and end-to-end hook calls through the compiled CLI.
 
 Env overrides (used by tests): `LOOPGUARD_USER_HOME`, `LOOPGUARD_DIR`, `LOOPGUARD_CURSOR_DB`, `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `LOOPGUARD_BIN`.
 
-License: MIT (planned).
+License: MIT (see LICENSE).

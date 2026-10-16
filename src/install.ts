@@ -6,8 +6,29 @@ import { readJson, writeJson } from './util';
 
 export const MARK = 'loopguard hook';
 
+const ownCli = () => path.resolve(__dirname, '..', 'dist', 'cli.js');
+
+/** Find a `loopguard` executable on PATH that resolves to THIS install (global npm/pnpm/bun bin). */
+export function globalBin(pathEnv = process.env.PATH || '', target = ownCli()): string | null {
+  let real: string;
+  try { real = fs.realpathSync(target); } catch { return null; }
+  const names = process.platform === 'win32' ? ['loopguard.cmd', 'loopguard.exe', 'loopguard'] : ['loopguard'];
+  for (const dir of pathEnv.split(path.delimiter).filter(Boolean)) {
+    for (const n of names) {
+      const p = path.join(dir, n);
+      try {
+        if (!fs.existsSync(p)) continue;
+        // npx caches are temporary: never pin hooks to them
+        if (/[\\/]_npx[\\/]/.test(p)) continue;
+        if (process.platform === 'win32' || fs.realpathSync(p) === real) return 'loopguard';
+      } catch { /* skip */ }
+    }
+  }
+  return null;
+}
+
 export function hookCommand(agent: Agent): string {
-  const cli = process.env.LOOPGUARD_BIN || `node ${JSON.stringify(path.resolve(__dirname, '..', 'dist', 'cli.js'))}`;
+  const cli = process.env.LOOPGUARD_BIN || globalBin() || `node ${JSON.stringify(ownCli())}`;
   return `${cli} hook --agent ${agent}`;
 }
 

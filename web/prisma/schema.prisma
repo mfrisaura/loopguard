@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   String     @id @default(cuid())
+  email                String     @unique
+  createdAt            DateTime   @default(now())
+  plan                 String     @default("free") // free | pro | team
+  planInterval         String? // month | year
+  seats                Int        @default(1)
+  stripeCustomerId     String?    @unique
+  stripeSubscriptionId String?    @unique
+  subscriptionStatus   String?
+  pausedUntil          DateTime?
+  alertEmail           Boolean    @default(true)
+  slackWebhook         String?
+  discordWebhook       String?
+  sessions             Session[]
+  apiKeys              ApiKey[]
+  usage                UsageRow[]
+  trips                Trip[]
+}
+
+model LoginToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  email     String
+  expiresAt DateTime
+  usedAt    DateTime?
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hash       String    @unique
+  prefix     String
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+}
+
+/// Aggregate usage only: one row per (machine, agent, hashed session, day, model). No prompts or code.
+model UsageRow {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  machine          String
+  agent            String
+  session          String
+  day              String
+  model            String
+  inputTokens      BigInt
+  outputTokens     BigInt
+  cacheReadTokens  BigInt
+  cacheWriteTokens BigInt
+  cost             Float
+  events           Int
+  estimated        Boolean
+  updatedAt        DateTime @updatedAt
+
+  @@unique([userId, machine, agent, session, day, model])
+  @@index([userId, day])
+}
+
+model Trip {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  machine     String
+  t           DateTime
+  agent       String
+  session     String
+  kind        String
+  halt        Boolean
+  tool        String?
+  sessionCost Float
+  dailyCost   Float
+  alertedAt   DateTime?
+
+  @@unique([userId, machine, t, session, kind])
+  @@index([userId, t])
+}
+
+model StripeEvent {
+  id        String   @id
+  createdAt DateTime @default(now())
+}
