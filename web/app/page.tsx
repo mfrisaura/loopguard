@@ -19,6 +19,6 @@ loopguard report --by agent`}</pre></section>
       <div className="card"><h3>Pro</h3><div className="price">$9<span className="mut" style={{ fontSize: 15 }}>/mo</span></div><p className="mut">or $79/year. Dashboard, alerts, remote pause, history across machines.</p></div>
       <div className="card"><h3>Team</h3><div className="price">$19<span className="mut" style={{ fontSize: 15 }}>/dev/mo</span></div><p className="mut">Min 3 seats. Everything in Pro for your whole team.</p></div>
     </div></section>
-    <p className="mut" style={{ fontSize: 13 }}>Costs are estimates at API list prices. Not affiliated with Anthropic, OpenAI or Anysphere.</p>
+    <p className="mut" style={{ fontSize: 13 }}>Costs are estimates at API list prices. Not affiliated with Anthropic, OpenAI or Anysphere. <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></p>
   </main>);
 }

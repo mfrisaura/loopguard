@@ -8,8 +8,18 @@
     "test": "node --import tsx --test test/*.test.ts",
     "prepare": "npm run build"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "claude-code",
+    "codex",
+    "cursor",
+    "ai-agents",
+    "token-usage",
+    "cost",
+    "budget",
+    "hooks",
+    "ccusage"
+  ],
+  "author": "Marcos Frisaura",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^26.6.5",
@@ -24,10 +34,19 @@
     "loopguard": "dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
-  "private": true,
   "engines": {
     "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mfrisaura/loopguard.git"
+  },
+  "homepage": "https://github.com/mfrisaura/loopguard#readme",
+  "bugs": {
+    "url": "https://github.com/mfrisaura/loopguard/issues"
   }
 }
