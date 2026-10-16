@@ -1,0 +1,33 @@
+{
+  "name": "loopguard",
+  "version": "0.1.0",
+  "description": "Budget fuse and runaway-loop killer for Claude Code, Codex CLI and Cursor",
+  "main": "dist/cli.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --import tsx --test test/*.test.ts",
+    "prepare": "tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/sql.js": "^1.4.11",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "sql.js": "^1.15.0"
+  },
+  "bin": {
+    "loopguard": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  }
+}
