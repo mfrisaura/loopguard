@@ -14,8 +14,8 @@ import { db } from '../lib/db';
 import { requestLogin, verifyLogin, userFromSessionToken } from '../lib/auth';
 import { validate, ingest } from '../lib/sync';
 import { dispatch, slackChannel, discordChannel, allowedWebhook, tripAlert, channelsFor } from '../lib/alerts';
-import { getStripe, handleWebhook, createCheckout } from '../lib/stripe';
-import { hasPro } from '../lib/plans';
+import { getStripe, handleWebhook, createCheckout, WebhookProcessingError } from '../lib/stripe';
+import { hasPro, hasActiveSubscription } from '../lib/plans';
 import { dailySeries } from '../lib/chart';
 import { POST as syncPOST } from '../app/api/sync/route';
 import { randomToken, sha256 } from '../lib/crypto';
@@ -127,4 +127,27 @@ test('chart series fills 30 days and stacks agents', () => {
   const now = new Date(2026, 9, 16);
   const s = dailySeries([{ day: '2026-10-16', agent: 'claude', cost: 1 }, { day: '2026-10-16', agent: 'codex', cost: 2 }, { day: '2025-01-01', agent: 'x', cost: 9 }], 30, now);
   assert.equal(s.length, 30); assert.equal(s[29].total, 3); assert.equal(s[0].day, '2026-09-17');
+});
+
+test('stripe webhook: stale subscription cancel does not downgrade; failures are retryable', async () => {
+  const u = await db.user.create({ data: { email: email(), plan: 'pro', stripeCustomerId: 'cus_s', stripeSubscriptionId: 'sub_new', subscriptionStatus: 'active' } });
+  const stripe = new Stripe('sk_test_dummy');
+  const sign = (p: string) => stripe.webhooks.generateTestHeaderString({ payload: p, secret: 'whsec_test_secret' });
+  const old = JSON.stringify({ id: 'evt_old', object: 'event', type: 'customer.subscription.deleted', data: { object: {
+    id: 'sub_old', object: 'subscription', customer: 'cus_s', status: 'canceled', metadata: { userId: u.id },
+    items: { data: [{ price: { id: 'price_pro_m' }, quantity: 1 }] } } } });
+  await handleWebhook(old, sign(old), stripe);
+  assert.equal((await db.user.findUnique({ where: { id: u.id } }))!.plan, 'pro');
+  // Processing error: event must not be recorded, so Stripe's retry gets processed.
+  const bad = JSON.stringify({ id: 'evt_bad', object: 'event', type: 'checkout.session.completed', data: { object: {
+    id: 'cs_1', object: 'checkout.session', customer: 'cus_s', subscription: 'sub_x', metadata: { userId: u.id } } } });
+  const failing: any = Object.assign(Object.create(stripe), { subscriptions: { retrieve: async () => { throw new Error('stripe down'); } } });
+  await assert.rejects(handleWebhook(bad, sign(bad), failing), WebhookProcessingError);
+  assert.equal(await db.stripeEvent.findUnique({ where: { id: 'evt_bad' } }), null);
+});
+
+test('hasActiveSubscription', () => {
+  assert.equal(hasActiveSubscription({ stripeSubscriptionId: 'sub_1', subscriptionStatus: 'active' }), true);
+  assert.equal(hasActiveSubscription({ stripeSubscriptionId: 'sub_1', subscriptionStatus: 'canceled' }), false);
+  assert.equal(hasActiveSubscription({ stripeSubscriptionId: null, subscriptionStatus: null }), false);
 });

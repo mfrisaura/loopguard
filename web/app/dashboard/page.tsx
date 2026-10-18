@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { COOKIE, userFromSessionToken } from '@/lib/auth';
-import { hasPro, TRIAL_DAYS } from '@/lib/plans';
+import { hasPro, hasActiveSubscription, TRIAL_DAYS } from '@/lib/plans';
 import { dailySeries, StackedBars, AgentLegend } from '@/lib/chart';
 
 export const dynamic = 'force-dynamic';
@@ -26,6 +26,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const today = series[series.length - 1].total, week = series.slice(-7).reduce((a, s) => a + s.total, 0), month = series.reduce((a, s) => a + s.total, 0);
   const byAgent: Record<string, number> = {}; for (const r of flat) byAgent[r.agent] = (byAgent[r.agent] || 0) + r.cost;
   const pro = hasPro(user);
+  const subscribed = hasActiveSubscription(user);
   const trialLeft = Math.max(0, Math.ceil(TRIAL_DAYS - (Date.now() - user.createdAt.getTime()) / 864e5));
   const paused = user.pausedUntil && user.pausedUntil > new Date();
 
@@ -80,11 +81,12 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
     <section className="card"><h3>Billing</h3>
       {user.stripeCustomerId && <form method="post" action="/api/stripe/portal"><button className="btn ghost">Manage subscription</button></form>}
+      {subscribed ? <p className="mut" style={{ marginTop: 10 }}>You're on {user.plan === 'team' ? `Team (${user.seats} seats)` : 'Pro'}{user.planInterval ? `, billed ${user.planInterval}ly` : ''}. Change or cancel your plan under Manage subscription.</p> :
       <div className="row" style={{ marginTop: 10 }}>
         <form className="inline" method="post" action="/api/stripe/checkout"><input type="hidden" name="plan" value="pro_monthly" /><button className="btn">Pro $9/mo</button></form>
         <form className="inline" method="post" action="/api/stripe/checkout"><input type="hidden" name="plan" value="pro_yearly" /><button className="btn">Pro $79/yr</button></form>
         <form className="inline row" method="post" action="/api/stripe/checkout"><input type="hidden" name="plan" value="team_monthly" /><input type="number" name="seats" min={3} defaultValue={3} style={{ width: 80 }} /><button className="btn">Team $19/dev/mo</button></form>
-      </div>
+      </div>}
     </section>
   </main>);
 }

@@ -1,6 +1,7 @@
 import Stripe from 'stripe';
 import { db } from './db';
-import { PLANS, PlanKey, TEAM_MIN_SEATS, priceId, planForPrice } from './plans';
+import { PLANS, PlanKey, TEAM_MIN_SEATS, priceId, planForPrice, ACTIVE_SUB_STATUSES } from './plans';
+export { hasActiveSubscription } from './plans';
 import { appUrl } from './auth';
 
 /** Test mode only unless ALLOW_LIVE_STRIPE=1 is set deliberately at launch. */
@@ -32,9 +33,14 @@ export async function createCheckout(user: { id: string; email: string; stripeCu
 async function applySubscription(sub: Stripe.Subscription) {
   const item = sub.items.data[0];
   const mapped = item ? planForPrice(item.price.id) : null;
-  const active = ['active', 'trialing', 'past_due'].includes(sub.status);
+  const active = ACTIVE_SUB_STATUSES.includes(sub.status);
   const userId = sub.metadata?.userId;
   const where = userId ? { id: userId } : { stripeCustomerId: String(sub.customer) };
+  // An inactive/ended subscription that is not the user's current one must not downgrade them.
+  if (!active) {
+    const cur = await db.user.findFirst({ where, select: { stripeSubscriptionId: true } });
+    if (cur?.stripeSubscriptionId && cur.stripeSubscriptionId !== sub.id) return;
+  }
   await db.user.updateMany({ where, data: {
     stripeCustomerId: String(sub.customer), stripeSubscriptionId: sub.id, subscriptionStatus: sub.status,
     plan: active && mapped ? mapped.plan : 'free', planInterval: active && mapped ? mapped.interval : null,
@@ -49,11 +55,23 @@ export async function handleWebhook(rawBody: string, signature: string | null, s
   const event = stripe.webhooks.constructEvent(rawBody, signature || '', secret);
   try { await db.stripeEvent.create({ data: { id: event.id } }); }
   catch { return { duplicate: true, type: event.type }; }
+  try { await processEvent(event, stripe); }
+  catch (e) {
+    // Forget the event so Stripe's retry is processed instead of being dropped as a duplicate.
+    await db.stripeEvent.delete({ where: { id: event.id } }).catch(() => {});
+    throw new WebhookProcessingError((e as Error).message);
+  }
+  return { duplicate: false, type: event.type };
+}
+
+export class WebhookProcessingError extends Error {}
+
+async function processEvent(event: Stripe.Event, stripe: Stripe) {
   switch (event.type) {
     case 'checkout.session.completed': {
       const s = event.data.object as Stripe.Checkout.Session;
       const userId = s.metadata?.userId || s.client_reference_id;
-      if (userId && s.customer) await db.user.update({ where: { id: userId }, data: { stripeCustomerId: String(s.customer), stripeSubscriptionId: s.subscription ? String(s.subscription) : undefined } });
+      if (userId && s.customer) await db.user.updateMany({ where: { id: userId }, data: { stripeCustomerId: String(s.customer), stripeSubscriptionId: s.subscription ? String(s.subscription) : undefined } });
       if (s.subscription && typeof s.subscription !== 'string') await applySubscription(s.subscription);
       else if (s.subscription) await applySubscription(await stripe.subscriptions.retrieve(String(s.subscription)));
       break;
@@ -64,7 +82,6 @@ export async function handleWebhook(rawBody: string, signature: string | null, s
       await applySubscription(event.data.object as Stripe.Subscription);
       break;
   }
-  return { duplicate: false, type: event.type };
 }
 
 export async function portalUrl(customer: string, stripe = getStripe()) {

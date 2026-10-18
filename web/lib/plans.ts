@@ -20,3 +20,7 @@ export function planForPrice(price: string): { plan: 'pro' | 'team'; interval: '
 export function hasPro(u: { plan: string; createdAt: Date }, now = Date.now()) {
   return u.plan === 'pro' || u.plan === 'team' || now - u.createdAt.getTime() < TRIAL_DAYS * 864e5;
 }
+
+export const ACTIVE_SUB_STATUSES = ['active', 'trialing', 'past_due'];
+export const hasActiveSubscription = (u: { stripeSubscriptionId: string | null; subscriptionStatus: string | null }) =>
+  !!u.stripeSubscriptionId && ACTIVE_SUB_STATUSES.includes(u.subscriptionStatus || '');
