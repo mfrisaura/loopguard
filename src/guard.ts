@@ -37,10 +37,21 @@ export function isPaused(now = Date.now()): boolean {
   return !!p.until && p.until > now;
 }
 
+/** Claude Code writes subagent usage to `<session>/subagents/agent-*.jsonl` next to the main transcript. */
+export function claudeSessionFiles(transcript: string): string[] {
+  const sub = path.join(transcript.replace(/\.jsonl$/, ''), 'subagents');
+  let extra: string[] = [];
+  try { extra = fs.readdirSync(sub).filter(f => f.endsWith('.jsonl')).map(f => path.join(sub, f)); } catch { /* none */ }
+  return [transcript, ...extra];
+}
+
 export async function sessionCost(inp: HookInput): Promise<number> {
-  if (inp.transcriptPath && fs.existsSync(inp.transcriptPath)) {
-    const ev = inp.agent === 'codex' ? parseCodexFile(inp.transcriptPath) : parseClaudeFile(inp.transcriptPath);
-    return sum(aggregate(ev));
+  // Only Claude Code and Codex transcripts carry token usage. Cursor's transcript is plain chat text,
+  // so Cursor spend always comes from state.vscdb (keyed by conversation/composer id).
+  if (inp.agent !== 'cursor' && inp.transcriptPath && fs.existsSync(inp.transcriptPath)) {
+    if (inp.agent === 'codex') return sum(aggregate(parseCodexFile(inp.transcriptPath)));
+    const seen = new Set<string>();
+    return sum(aggregate(claudeSessionFiles(inp.transcriptPath).flatMap(f => parseClaudeFile(f, seen))));
   }
   const rows = await collectRows({ agents: [inp.agent] });
   return sum(rows.filter(r => r.sessionId === inp.sessionId));
@@ -104,7 +115,10 @@ async function evaluateInner(inp: HookInput, opts: { cfg?: Config; now?: number;
     const pct = (x: number, cap: number) => cap > 0 ? (x / cap) * 100 : 0;
     const sp = pct(sCost, cfg.sessionCapUsd), dp = pct(dCost, cfg.dailyCapUsd);
     if (Math.max(sp, dp) >= cfg.warnAtPct)
-      verdict = { action: 'allow', warn: `LoopGuard: session ${fmt(sCost)}/${fmt(cfg.sessionCapUsd)}, today ${fmt(dCost)}/${fmt(cfg.dailyCapUsd)}` };
+      verdict = { action: 'allow', warn: 'LoopGuard: ' + [
+        cfg.sessionCapUsd > 0 ? `session ${fmt(sCost)}/${fmt(cfg.sessionCapUsd)}` : '',
+        cfg.dailyCapUsd > 0 ? `today ${fmt(dCost)}/${fmt(cfg.dailyCapUsd)}` : '',
+      ].filter(Boolean).join(', ') };
   }
   try { writeJson(sf, st); } catch { /* ignore */ }
   return { verdict, s: sCost, d: dCost };

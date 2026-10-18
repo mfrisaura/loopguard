@@ -76,6 +76,8 @@ async function main() {
       const c = loadConfig();
       console.log(`Caps: session $${c.sessionCapUsd}, daily $${c.dailyCapUsd}. Loop: ${c.loop.maxRepeats} identical calls / ${c.loop.windowSec}s, spiral $${c.loop.spiralUsd}/${c.loop.spiralWindowSec}s.`);
       if (hookCli().startsWith('npx ')) console.log(`Tip: hooks will run via npx (slower). For ~0.1 s hooks: npm i -g ${PKG_NAME} && loopguard init`);
+      if (list.includes('codex'))
+        console.log('Codex: new hooks are skipped until you trust them. Open `codex`, run /hooks, and trust the two LoopGuard hooks.');
       console.log('Restart running agent sessions for hooks to load.');
       return;
     }

@@ -36,3 +36,14 @@ test('sync without login errors clearly', async () => {
   sandbox();
   await assert.rejects(sync(), /not logged in/);
 });
+
+test('partial (single-agent) scans keep other agents in the usage index', async () => {
+  const { collectRows } = await import('../src/usage');
+  const d = sandbox(); seed(d);
+  await collectRows();
+  const idxFile = path.join(d, '.loopguard', 'index.json');
+  const before = Object.keys(JSON.parse(fs.readFileSync(idxFile, 'utf8')).files).length;
+  await collectRows({ agents: ['claude'] });
+  const after = Object.keys(JSON.parse(fs.readFileSync(idxFile, 'utf8')).files).length;
+  assert.equal(after, before);
+});

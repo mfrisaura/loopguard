@@ -56,16 +56,22 @@ Trips are logged to `~/.loopguard/trips.jsonl`.
 ## How each agent is enforced
 | Agent | Data read | Block | Halt |
 |---|---|---|---|
-| Claude Code | `~/.claude/projects/**/*.jsonl` (dedup by message id + request id); session spend from hook's `transcript_path` | `hookSpecificOutput.permissionDecision: "deny"` | `{"continue": false, "stopReason": …}` |
-| Codex CLI | `~/.codex/sessions/**/rollout-*.jsonl`, `token_count.last_token_usage` per turn, cached input split out, rate-limit re-emits skipped | exit code 2 + reason on stderr | Repeated denies (no documented halt field used yet) |
+| Claude Code | `~/.claude/projects/**/*.jsonl` (dedup by message id + request id); session spend from hook's `transcript_path` plus its `subagents/agent-*.jsonl` | `hookSpecificOutput.permissionDecision: "deny"` | `{"continue": false, "stopReason": …}` |
+| Codex CLI | `~/.codex/sessions/**/rollout-*.jsonl`, `token_count.last_token_usage` per turn, cached input split out, rate-limit re-emits skipped | exit code 2 + reason on stderr | Repeated denies (Codex hooks have no session-halt field) |
 | Cursor | `state.vscdb` → `cursorDiskKV` `bubbleId:*` rows (`tokenCount`; chars/4 estimate when absent) | `{"permission":"deny", …}` | Repeated denies |
+
+Notes from testing against the real CLIs (Claude Code 2.1.302, Codex 0.163):
+- **Codex asks you to trust new hooks.** After `loopguard init`, open `codex`, run `/hooks` and trust the two LoopGuard
+  hooks. Until you do, Codex skips them without saying anything in `codex exec`.
+- **Claude Code halts on `continue: false` in recent versions** (verified on 2.1.302). Older builds (for example 2.1.197,
+  which npm still installs on Node 20) honor the deny but keep the session going.
 
 Pricing: built-in list-price table per 1M tokens (`src/pricing.ts`); override with `~/.loopguard/pricing.json`,
 e.g. `{"my-model": {"input": 2, "output": 8, "cacheRead": 0.2, "cacheWrite": 0}}`. Costs are **estimates**;
 subscription plans (Claude Max, ChatGPT, Cursor Pro) are not billed per token.
 
 ## Tests
-`npm test` → 24 tests: parsers against fixture logs (`test/fixtures/`), pricing, install/uninstall/restore for all three
+`npm test` → 29 tests: parsers against fixture logs (`test/fixtures/`), pricing, install/uninstall/restore for all three
 agents, caps, loop + spiral detection, pause, and end-to-end hook calls through the compiled CLI.
 
 Env overrides (used by tests): `LOOPGUARD_USER_HOME`, `LOOPGUARD_DIR`, `LOOPGUARD_CURSOR_DB`, `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `LOOPGUARD_BIN`.

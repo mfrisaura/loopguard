@@ -114,3 +114,42 @@ test('e2e: cursor allow + garbage stdin fails open', () => {
   const bad = spawnSync('node', [CLI, 'hook', '--agent', 'claude'], { input: '{{{', encoding: 'utf8', env: { ...process.env, LOOPGUARD_USER_HOME: d, LOOPGUARD_DIR: path.join(d, '.loopguard') } });
   assert.equal(bad.status, 0);
 });
+
+// ---- Regressions found in the pre-launch smoke test against real Claude Code 2.1.302 / Codex 0.163 ----
+
+const asstLine = (sid: string, id: string, input: number) => JSON.stringify({
+  type: 'assistant', sessionId: sid, requestId: 'req_' + id, timestamp: new Date().toISOString(),
+  message: { id, model: 'claude-sonnet-5', usage: { input_tokens: input, output_tokens: 0 } } });
+
+test('claude session cost includes subagent transcripts (<session>/subagents/agent-*.jsonl)', async () => {
+  const d = sandbox();
+  const dir = path.join(d, '.claude/projects/-work-app'); const sid = 'aaaa-sub';
+  fs.mkdirSync(path.join(dir, sid, 'subagents'), { recursive: true });
+  const main = path.join(dir, `${sid}.jsonl`);
+  fs.writeFileSync(main, asstLine(sid, 'm1', 1_000_000) + '\n'); // $3
+  fs.writeFileSync(path.join(dir, sid, 'subagents', 'agent-x1.jsonl'), asstLine(sid, 's1', 1_000_000) + '\n' + asstLine(sid, 's2', 1_000_000) + '\n'); // $6
+  // Real subagent PreToolUse payloads carry the PARENT transcript_path plus agent_id.
+  const i = normalizeInput('claude', { session_id: sid, transcript_path: main, agent_id: 'x1', hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command: 'ls' } });
+  const v = await evaluate(i, { cfg: cfg({ sessionCapUsd: 8, dailyCapUsd: 0 }, { spiralUsd: 0 }) });
+  assert.ok(v.action === 'deny' && v.kind === 'session_cap', JSON.stringify(v));
+});
+
+test('cursor session cap uses state.vscdb even when transcript_path is set', async () => {
+  const d = sandbox(); seed(d);
+  const t = path.join(d, '.cursor/projects/app/agent-transcripts/conv.jsonl');
+  fs.mkdirSync(path.dirname(t), { recursive: true });
+  fs.writeFileSync(t, '{"role":"user","message":{"content":[{"type":"text","text":"hi"}]}}\n');
+  const { parseCursorDb } = await import('../src/parsers/cursor');
+  const ev = await parseCursorDb(path.join(d, 'cursor', 'state.vscdb'));
+  const conv = ev[0].sessionId;
+  const raw = { conversation_id: conv, hook_event_name: 'preToolUse', tool_name: 'Shell', tool_input: { command: 'ls', working_directory: '/w' }, transcript_path: t };
+  const withT = await evaluate(normalizeInput('cursor', raw, 'preToolUse'), { cfg: cfg({ sessionCapUsd: 0.000001, dailyCapUsd: 0 }, { spiralUsd: 0 }) });
+  assert.ok(withT.action === 'deny' && withT.kind === 'session_cap', JSON.stringify(withT));
+});
+
+test('warning omits disabled caps', async () => {
+  sandbox();
+  const v = await evaluate(inp('claude'), { cfg: cfg({ sessionCapUsd: 10, dailyCapUsd: 0 }), costs: { session: 9, daily: 0 } });
+  assert.ok(v.action === 'allow' && v.warn);
+  assert.doesNotMatch(v.warn!, /today/);
+});

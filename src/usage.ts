@@ -43,6 +43,9 @@ export async function collectRows(opts: { agents?: Agent[]; noCache?: boolean } 
   const agents = opts.agents || ['claude', 'codex', 'cursor'];
   const idx: Index = opts.noCache ? { version: 1, files: {} } : readJson<Index>(indexFile(), { version: 1, files: {} });
   const next: Index = { version: 1, files: {} };
+  // Partial scans (e.g. one agent from a hook) must not evict other agents' cached files from the index.
+  if (opts.agents) for (const [f, e] of Object.entries(idx.files))
+    if (e.rows.length && !e.rows.some(r => agents.includes(r.agent))) next.files[f] = e;
   const handle = async (file: string, parse: () => UsageEvent[] | Promise<UsageEvent[]>) => {
     let st: fs.Stats;
     try { st = fs.statSync(file); } catch { return; }
