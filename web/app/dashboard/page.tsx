@@ -61,7 +61,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     </section>
 
     <section className="card"><h3>Connect the CLI</h3>
-      {newKey && <><p>Your new API key (shown once):</p><pre>{`loopguard login --key ${newKey} --url ${process.env.APP_URL || 'http://localhost:3000'}\nloopguard sync`}</pre></>}
+      {newKey && <><p>Your new API key (shown once):</p><pre>{`loopguard login --key ${newKey}${(process.env.APP_URL || '') === 'https://tryloopguard.com' ? '' : ` --url ${process.env.APP_URL || 'http://localhost:3000'}`}\nloopguard sync`}</pre></>}
       <table><tbody>{keys.map(k => <tr key={k.id}><td><code>{k.prefix}…</code></td><td className="mut">created {k.createdAt.toLocaleDateString()}</td><td className="mut">{k.lastUsedAt ? `last sync ${k.lastUsedAt.toLocaleString()}` : 'never used'}</td>
         <td><form className="inline" method="post" action="/api/keys"><input type="hidden" name="revoke" value={k.id} /><button className="btn ghost">Revoke</button></form></td></tr>)}</tbody></table>
       <form method="post" action="/api/keys" style={{ marginTop: 10 }}><button className="btn">Create API key</button></form>

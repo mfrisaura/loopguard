@@ -119,7 +119,7 @@ async function main() {
     case 'resume': writeJson(path.join(lgDir(), 'pause.json'), {}); console.log('Enforcement resumed.'); return;
     case 'login': {
       const key = flag('key'); if (!key || !/^lg_[\w-]+$/.test(key)) throw new Error('--key lg_... required (create one in the dashboard)');
-      const url = flag('url') || process.env.LOOPGUARD_API || 'http://localhost:3000';
+      const url = flag('url') || process.env.LOOPGUARD_API || 'https://tryloopguard.com';
       writeJson(cloudFile(), { ...readJson<any>(cloudFile(), {}), apiUrl: url, apiKey: key });
       try { fs.chmodSync(cloudFile(), 0o600); } catch {}
       console.log(`Saved credentials for ${url}. Run \`loopguard sync\`.`); return;

@@ -30,7 +30,7 @@ node dist/cli.js uninstall       # removes only LoopGuard entries; --restore put
 | `status` | Today's spend vs caps, which agents are guarded, last 5 trips. |
 | `config` / `config set <key> <value>` | e.g. `sessionCapUsd 20`, `dailyCapUsd 60`, `loop.maxRepeats 6`, `loop.enabled false`. |
 | `pause [min]` / `resume` | Temporarily bypass enforcement (default 15 min). |
-| `login --key lg_… --url <dashboard>` | Save dashboard API key (`~/.loopguard/cloud.json`, mode 600). |
+| `login --key lg_… --url <dashboard>` | Save dashboard API key (default https://tryloopguard.com) (`~/.loopguard/cloud.json`, mode 600). |
 | `sync [--dry-run]` | Upload aggregate usage + trips (Pro); applies remote pause. `--dry-run` prints exactly what would be sent. |
 | `hook --agent <a> --event <e>` | Called by the agents (JSON on stdin). ~0.1 s per call. |
 
