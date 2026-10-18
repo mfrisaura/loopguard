@@ -75,3 +75,13 @@ test('hookCommand prefers global `loopguard` bin that resolves to this install',
   fs.writeFileSync(path.join(other, 'loopguard'), '#!/bin/sh\n'); // unrelated binary
   assert.equal(globalBin(other, target), null);
 });
+
+test('hookCli never pins hooks to a temporary npx cache path', () => {
+  const { hookCli } = require('../src/install');
+  const saved = process.env.LOOPGUARD_BIN; delete process.env.LOOPGUARD_BIN;
+  try {
+    const npxTarget = '/home/u/.npm/_npx/abc123/node_modules/loopguard-cli/dist/cli.js';
+    assert.match(hookCli(npxTarget, ''), /^npx -y loopguard-cli@\S+$/);
+    assert.equal(hookCli('/opt/lg/dist/cli.js', ''), 'node "/opt/lg/dist/cli.js"');
+  } finally { if (saved !== undefined) process.env.LOOPGUARD_BIN = saved; }
+});

@@ -44,9 +44,7 @@ export default function Page() {
 
     <h2>Doing it with LoopGuard</h2>
     <p>LoopGuard is an open-source (MIT) CLI that does exactly the above for Claude Code, Codex CLI and Cursor at once. It reads the usage logs the agents already write (no proxy, no API keys, works on subscriptions) and installs itself as a hook in each agent.</p>
-    <pre>{`# install from source (see the README on GitHub)
-git clone https://github.com/mfrisaura/loopguard && cd loopguard
-npm install && npm run build && npm link   # puts \`loopguard\` on your PATH
+    <pre>{`npm i -g loopguard-cli   # puts \`loopguard\` on your PATH (one-off: npx loopguard-cli <command>)
 
 loopguard init      # detects ~/.claude, ~/.codex, ~/.cursor; backs up each config first
 loopguard status    # today's spend vs caps, which agents are guarded, last 5 trips`}</pre>

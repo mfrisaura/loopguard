@@ -5,7 +5,7 @@ import { Agent } from './types';
 import { collectRows } from './usage';
 import { table, group, GroupBy } from './report';
 import { evaluate, normalizeInput, render, dailyCost } from './guard';
-import { detectAgents, install, uninstall, configPath } from './install';
+import { detectAgents, install, uninstall, configPath, hookCli, PKG_NAME } from './install';
 import { loadConfig, setConfig, configFile } from './config';
 import { lgDir } from './paths';
 import { localDay, readJson, writeJson } from './util';
@@ -24,6 +24,8 @@ const agentList = (): Agent[] => {
 };
 
 const HELP = `loopguard — budget fuse + loop killer for Claude Code, Codex CLI and Cursor
+
+Install: npm i -g loopguard-cli   (or run once: npx loopguard-cli <command>)
 
 Usage:
   loopguard init [--agent claude,codex,cursor]   install hooks (backs up configs)
@@ -63,12 +65,17 @@ async function main() {
         process.exit(0); // fail-open: never break the agent on our bugs
       }
     }
+    case '--version': case '-v': case 'version': {
+      try { console.log(require(path.resolve(__dirname, '..', 'package.json')).version); } catch { console.log('unknown'); }
+      return;
+    }
     case 'init': {
       const list = agentList().length ? agentList() : detectAgents();
       if (!list.length) { console.log('No agents detected (~/.claude, ~/.codex, ~/.cursor). Use --agent to force.'); return; }
       for (const a of list) console.log(`✔ ${a}: hooks installed in ${install(a)}`);
       const c = loadConfig();
       console.log(`Caps: session $${c.sessionCapUsd}, daily $${c.dailyCapUsd}. Loop: ${c.loop.maxRepeats} identical calls / ${c.loop.windowSec}s, spiral $${c.loop.spiralUsd}/${c.loop.spiralWindowSec}s.`);
+      if (hookCli().startsWith('npx ')) console.log(`Tip: hooks will run via npx (slower). For ~0.1 s hooks: npm i -g ${PKG_NAME} && loopguard init`);
       console.log('Restart running agent sessions for hooks to load.');
       return;
     }

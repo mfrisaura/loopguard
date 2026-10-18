@@ -1,4 +1,4 @@
-# LoopGuard (v0.1.0, pre-release)
+# LoopGuard (v0.1.0)
 
 Budget fuse + runaway-loop killer for **Claude Code**, **Codex CLI** and **Cursor**.
 `ccusage` tells you what you spent. LoopGuard stops you spending it.
@@ -8,11 +8,19 @@ Budget fuse + runaway-loop killer for **Claude Code**, **Codex CLI** and **Curso
   all agents, and loop heuristics, and **denies the call / halts the session** when a limit trips.
 - Fails open: if LoopGuard itself errors, your agent keeps working (error logged to `~/.loopguard/errors.log`).
 
-Hooks call the global `loopguard` binary when it's on PATH and points at this install (e.g. `npm i -g loopguard`); otherwise `node /abs/path/dist/cli.js`. Never pinned to temporary `npx` caches.
+## Install
+```bash
+npm i -g loopguard-cli     # installs the `loopguard` command
+loopguard init             # auto-detects ~/.claude, ~/.codex, ~/.cursor; backs up configs
+loopguard report --by agent
+```
+Try it without installing: `npx loopguard-cli report` (any command works the same way: `npx loopguard-cli <command>`).
+
+Hooks call the global `loopguard` binary when it's on PATH and points at this install; otherwise `node /abs/path/dist/cli.js`. Never pinned to temporary `npx` caches: if you run `npx loopguard-cli init` without a global install, hooks call `npx -y loopguard-cli@<version>` (works, but slower — install globally for ~0.1 s hooks).
 
 Dashboard, sync API, Stripe billing and landing page live in [`web/`](web/README.md).
 
-## Install (local dev)
+## Develop from source
 ```bash
 npm install && npm run build
 node dist/cli.js init            # auto-detects ~/.claude, ~/.codex, ~/.cursor; backs up configs

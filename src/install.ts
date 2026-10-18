@@ -27,9 +27,27 @@ export function globalBin(pathEnv = process.env.PATH || '', target = ownCli()): 
   return null;
 }
 
+export const PKG_NAME = 'loopguard-cli';
+
+/** True when running from a temporary npx cache (e.g. `npx loopguard-cli init`). */
+export const runningFromNpx = (target = ownCli()) => /[\\/]_npx[\\/]/.test(target);
+
+function pkgVersion(): string {
+  try { return require(path.resolve(__dirname, '..', 'package.json')).version; } catch { return 'latest'; }
+}
+
+/** Command the agents' hooks run. Never pinned to a temporary npx cache path. */
+export function hookCli(target = ownCli(), pathEnv = process.env.PATH || ''): string {
+  if (process.env.LOOPGUARD_BIN) return process.env.LOOPGUARD_BIN;
+  const g = globalBin(pathEnv, target);
+  if (g) return g;
+  // From an npx cache with no global install: re-resolve via npx (slower, but survives cache cleanup).
+  if (runningFromNpx(target)) return `npx -y ${PKG_NAME}@${pkgVersion()}`;
+  return `node ${JSON.stringify(target)}`;
+}
+
 export function hookCommand(agent: Agent): string {
-  const cli = process.env.LOOPGUARD_BIN || globalBin() || `node ${JSON.stringify(ownCli())}`;
-  return `${cli} hook --agent ${agent}`;
+  return `${hookCli()} hook --agent ${agent}`;
 }
 
 export function configPath(agent: Agent): string {

@@ -48,9 +48,7 @@ export default function Page() {
 
     <h2>Doing it with one command</h2>
     <p>LoopGuard’s open-source CLI reads all three sources, de-duplicates and prices them, and keeps an incremental index so repeat reports are fast:</p>
-    <pre>{`# install from source (see the README on GitHub)
-git clone https://github.com/mfrisaura/loopguard && cd loopguard
-npm install && npm run build && npm link
+    <pre>{`npm i -g loopguard-cli   # puts \`loopguard\` on your PATH (one-off: npx loopguard-cli <command>)
 
 loopguard report --by session            # or --by day | agent | model
 loopguard report --since 2026-10-01 --agent codex

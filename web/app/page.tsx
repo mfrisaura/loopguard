@@ -7,7 +7,8 @@ export default function Home() {
       <p>Budget fuses and a runaway-loop killer for Claude Code, Codex CLI and Cursor. One install, no proxy, works on subscriptions — and it pings your phone when something trips.</p>
       <div className="row" style={{ marginTop: 20 }}><a className="btn" href="#install">Install free</a><a className="btn ghost" href="/login">Start 14-day Pro trial</a></div>
     </div>
-    <section id="install"><pre>{`npx loopguard init      # hooks into Claude Code, Codex and Cursor (backs up configs)
+    <section id="install"><pre>{`npm i -g loopguard-cli  # installs the \`loopguard\` command (or try: npx loopguard-cli report)
+loopguard init          # hooks into Claude Code, Codex and Cursor (backs up configs)
 loopguard config set sessionCapUsd 20
 loopguard report --by agent
 

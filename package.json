@@ -1,5 +1,5 @@
 {
-  "name": "loopguard",
+  "name": "loopguard-cli",
   "version": "0.1.0",
   "description": "Budget fuse and runaway-loop killer for Claude Code, Codex CLI and Cursor",
   "main": "dist/cli.js",
@@ -45,7 +45,7 @@
     "type": "git",
     "url": "git+https://github.com/mfrisaura/loopguard.git"
   },
-  "homepage": "https://github.com/mfrisaura/loopguard#readme",
+  "homepage": "https://tryloopguard.com",
   "bugs": {
     "url": "https://github.com/mfrisaura/loopguard/issues"
   }

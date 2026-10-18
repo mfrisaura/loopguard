@@ -33,7 +33,7 @@ Honest read: reporting is commoditized and free (MIT). We should NOT compete on 
 "ccusage tells you what you spent. LoopGuard stops you spending it." — budget fuses + loop killer for Claude Code, Codex and Cursor, one install, no proxy, works on subscriptions, alerts to phone/Slack/Discord.
 
 ## 5. MVP features
-Free / OSS CLI (`npx loopguard`):
+Free / OSS CLI (npm package `loopguard-cli`, command `loopguard`: `npm i -g loopguard-cli` or `npx loopguard-cli`):
 - `loopguard init` — detects installed agents, writes hook entries to the agents' config files (backup + `loopguard uninstall` restore).
 - Hook handler (fast Node script, <50 ms): on PreToolUse/Stop computes session spend from local logs (incremental SQLite index), applies rules, returns deny/halt.
 - Rules: per-session $/token cap, daily cap, per-goal auto-cap, loop detection (same tool+args N times in window; cost spiral $/min; no file diff over N turns), quota % warnings (5-hour block).
