@@ -93,6 +93,11 @@ test('sync requires Pro after trial', async () => {
 test('stripe: refuses live keys; checkout builds subscription session (fake client)', async () => {
   process.env.STRIPE_SECRET_KEY = 'sk_live_x';
   assert.throws(() => getStripe(), /Refusing non-test/);
+  process.env.STRIPE_SECRET_KEY = 'rk_live_x';
+  assert.throws(() => getStripe(), /Refusing non-test/);
+  process.env.ALLOW_LIVE_STRIPE = '1';
+  assert.ok(getStripe()); // restricted live keys are accepted once live mode is deliberately enabled
+  delete process.env.ALLOW_LIVE_STRIPE;
   process.env.STRIPE_SECRET_KEY = 'sk_test_dummy';
   let args: any;
   const fake: any = { checkout: { sessions: { create: async (a: any) => { args = a; return { url: 'https://checkout.stripe.test/x' }; } } } };

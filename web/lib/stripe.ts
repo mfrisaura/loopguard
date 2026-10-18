@@ -4,7 +4,7 @@ import { PLANS, PlanKey, TEAM_MIN_SEATS, priceId, planForPrice, ACTIVE_SUB_STATU
 export { hasActiveSubscription } from './plans';
 import { appUrl } from './auth';
 
-/** Test mode only unless ALLOW_LIVE_STRIPE=1 is set deliberately at launch. */
+/** Test mode only (sk_test_/rk_test_) unless ALLOW_LIVE_STRIPE=1 is set deliberately at launch; then sk_live_ or restricted rk_live_ keys work. */
 export function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error('STRIPE_SECRET_KEY not set');
