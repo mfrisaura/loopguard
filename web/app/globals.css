@@ -16,3 +16,9 @@ form.inline{display:inline}.row{display:flex;gap:8px;align-items:center;flex-wra
 .badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;border:1px solid var(--line)}
 .legend span{margin-right:14px}.dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}
 section{margin:36px 0}.price{font-size:34px;font-weight:800}
+.foot{display:flex;gap:48px;flex-wrap:wrap;max-width:1040px;margin:24px auto 0;padding:24px 20px 40px;border-top:1px solid var(--line);font-size:14px}
+.foot div{display:flex;flex-direction:column;gap:6px}.foot a{color:var(--mut);text-decoration:none}.foot a:hover{color:var(--fg)}
+.prose{max-width:760px}.prose h1{font-size:36px;line-height:1.15;letter-spacing:-.02em;margin:8px 0 16px}
+.prose h2{margin:36px 0 10px}.prose .lead{font-size:18px;color:var(--mut)}.prose li{margin:6px 0}
+.prose code{background:var(--card);border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:13px}.prose pre code{border:0;padding:0}
+.prose table{margin:12px 0;display:block;overflow-x:auto}

@@ -1,3 +1,5 @@
+import { GUIDES } from './guides/guides';
+
 export default function Home() {
   return (<main>
     <div className="hero">
@@ -17,6 +19,9 @@ loopguard login --key lg_…   # then: loopguard sync`}</pre></section>
       <div className="card"><h3>Local first</h3><p className="mut">Reads the logs your agents already write. No API keys, no proxy. Only aggregate numbers ever leave your machine — and only if you turn on sync.</p></div>
       <div className="card"><h3>Away-from-keyboard alerts</h3><p className="mut">Email, Slack or Discord the moment something trips, and pause or resume enforcement from your phone.</p></div>
     </section>
+    <section id="guides"><h2>Guides</h2><div className="grid">
+      {GUIDES.map(g => (<a key={g.slug} className="card" href={`/guides/${g.slug}`} style={{ textDecoration: 'none' }}><h3>{g.title}</h3><p className="mut" style={{ margin: 0 }}>{g.description}</p></a>))}
+    </div></section>
     <section id="pricing"><h2>Pricing</h2><div className="grid">
       <div className="card"><h3>Free</h3><div className="price">$0</div><p className="mut">Open-source CLI (MIT). Caps, loop detection, local reports.</p></div>
       <div className="card"><h3>Pro</h3><div className="price">$9<span className="mut" style={{ fontSize: 15 }}>/mo</span></div><p className="mut">or $79/year. Dashboard, alerts, remote pause, history across machines.</p></div>
