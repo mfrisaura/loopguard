@@ -1,4 +1,5 @@
-import { articleJsonLd, guide, guideMetadata, GUIDES } from '../guides';
+import { articleJsonLd, guide, guideMetadata } from '../guides';
+import { Related } from '../related';
 
 const SLUG = 'track-ai-coding-agent-token-costs' as const;
 export const metadata = guideMetadata(SLUG);
@@ -15,7 +16,7 @@ Costs are estimates at API list prices; subscription plans are billed differentl
 
 export default function Page() {
   const g = guide(SLUG);
-  const other = GUIDES.find(x => x.slug !== SLUG)!;
+  const loops = guide('stop-runaway-ai-coding-agent-loops');
   return (<main className="prose">
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: articleJsonLd(SLUG) }} />
     <p className="mut"><a href="/guides">Guides</a> · Updated October 18, 2026</p>
@@ -67,10 +68,9 @@ loopguard report --by model --json       # machine-readable, for scripts and spr
     </ul>
 
     <h2>From tracking to limits</h2>
-    <p>A report tells you what happened. If you also want something to stop the next expensive session, the same CLI installs hooks that deny tool calls once a session or daily dollar cap is reached, and catches repeated identical tool calls. See <a href={`/guides/${other.slug}`}>{other.title}</a>.</p>
+    <p>A report tells you what happened. If you also want something to stop the next expensive session, the same CLI installs hooks that deny tool calls once a session or daily dollar cap is reached, and catches repeated identical tool calls. See <a href={`/guides/${loops.slug}`}>{loops.title}</a>, or the per-tool guides: <a href="/guides/claude-code-spending-limit">Claude Code spending limit</a>, <a href="/guides/limit-cursor-agent-costs">limiting Cursor agent costs</a> and <a href="/guides/codex-cli-spending-limit">capping Codex CLI spend</a>.</p>
     <p>Other good tools: <a href="https://github.com/ryoppippi/ccusage">ccusage</a> is a popular reporting CLI if you only need reports, and Claude Code’s built-in <code>/cost</code> command shows the current session. For history across several machines, LoopGuard Pro’s dashboard receives aggregate numbers only (tokens and cost per agent, session, model and day; never prompts or code) when you run <code>loopguard sync</code>; <code>loopguard sync --dry-run</code> prints the exact payload first.</p>
 
-    <h2>Related</h2>
-    <p><a href={`/guides/${other.slug}`}>{other.title}</a> · <a href="https://github.com/mfrisaura/loopguard">LoopGuard on GitHub</a> · <a href="/#pricing">Pricing</a></p>
+    <Related slug={SLUG} />
   </main>);
 }

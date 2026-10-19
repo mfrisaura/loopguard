@@ -14,6 +14,27 @@ export const GUIDES = [
     description: 'Where Claude Code, Codex CLI and Cursor store token usage on your machine, how to turn it into an estimated dollar cost per session, and what the numbers tell you.',
     updated: '2026-10-18',
   },
+  {
+    slug: 'claude-code-spending-limit',
+    title: 'How to set a spending limit for Claude Code',
+    short: 'Claude Code spending limit',
+    description: 'Every native way to cap Claude Code spend (Console workspace limits, usage-credit limits, --max-budget-usd for headless runs) and how to add a per-session and daily dollar cap to interactive sessions with a hook.',
+    updated: '2026-10-19',
+  },
+  {
+    slug: 'limit-cursor-agent-costs',
+    title: 'How to limit Cursor agent usage costs',
+    short: 'Limit Cursor agent costs',
+    description: 'How Cursor bills agent usage, where to set the monthly spend limit (and what it does not cover), and how to add loop detection and per-session caps to the Cursor agent with hooks.',
+    updated: '2026-10-19',
+  },
+  {
+    slug: 'codex-cli-spending-limit',
+    title: 'How to cap OpenAI Codex CLI spend',
+    short: 'Cap Codex CLI spend',
+    description: 'Hard spend limits for Codex CLI on an API key, credit and auto-reload limits on a ChatGPT plan, and how to add per-session and daily caps to Codex with hooks.',
+    updated: '2026-10-19',
+  },
 ] as const;
 export type Guide = (typeof GUIDES)[number];
 export const guide = (slug: Guide['slug']) => GUIDES.find(g => g.slug === slug)!;

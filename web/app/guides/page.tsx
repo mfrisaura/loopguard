@@ -2,7 +2,7 @@ import { GUIDES } from './guides';
 
 export const metadata = {
   title: 'Guides: controlling AI coding agent costs and loops | LoopGuard',
-  description: 'Practical how-to guides for keeping Claude Code, Codex CLI and Cursor from burning money: stopping runaway loops and tracking token costs per session.',
+  description: 'Practical how-to guides for keeping Claude Code, Codex CLI and Cursor from burning money: spending limits for each tool, stopping runaway loops and tracking token costs per session.',
   alternates: { canonical: '/guides' },
 };
 

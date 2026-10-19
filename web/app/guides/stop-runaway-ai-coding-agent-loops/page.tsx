@@ -1,11 +1,11 @@
-import { articleJsonLd, guide, guideMetadata, GUIDES } from '../guides';
+import { articleJsonLd, guide, guideMetadata } from '../guides';
+import { Related } from '../related';
 
 const SLUG = 'stop-runaway-ai-coding-agent-loops' as const;
 export const metadata = guideMetadata(SLUG);
 
 export default function Page() {
   const g = guide(SLUG);
-  const other = GUIDES.find(x => x.slug !== SLUG)!;
   return (<main className="prose">
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: articleJsonLd(SLUG) }} />
     <p className="mut"><a href="/guides">Guides</a> · Updated October 18, 2026</p>
@@ -67,6 +67,8 @@ loopguard pause 15   # bypass enforcement for 15 minutes when you really mean it
 loopguard resume`}</pre>
     <p>When a rule trips, the agent sees a plain reason, for example <code>LoopGuard: loop detected — identical Bash call 5x in 600s. Blocked; try a different approach.</code> Every trip is logged to <code>~/.loopguard/trips.jsonl</code>. <code>loopguard uninstall</code> removes only LoopGuard’s hook entries; <code>loopguard uninstall --restore</code> puts the original config files back byte-for-byte.</p>
 
+    <p>Each agent also has its own built-in spend controls (monthly account limits, and for Claude Code a per-run cap in print mode). Tool-by-tool setup, native options first: <a href="/guides/claude-code-spending-limit">Claude Code spending limit</a> · <a href="/guides/limit-cursor-agent-costs">limiting Cursor agent costs</a> · <a href="/guides/codex-cli-spending-limit">capping Codex CLI spend</a>.</p>
+
     <h2>For overnight and unattended runs</h2>
     <ul>
       <li>Set a session cap you would be comfortable losing while asleep, and a daily cap below your real budget.</li>
@@ -83,7 +85,6 @@ loopguard resume`}</pre>
       <li>LoopGuard fails open: if it hits an internal error, your agent keeps working and the error goes to <code>~/.loopguard/errors.log</code>.</li>
     </ul>
 
-    <h2>Related</h2>
-    <p><a href={`/guides/${other.slug}`}>{other.title}</a> · <a href="https://github.com/mfrisaura/loopguard">LoopGuard on GitHub</a> · <a href="/#pricing">Pricing</a></p>
+    <Related slug={SLUG} />
   </main>);
 }
