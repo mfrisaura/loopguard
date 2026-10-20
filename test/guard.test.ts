@@ -119,7 +119,7 @@ test('e2e: cursor allow + garbage stdin fails open', () => {
 
 const asstLine = (sid: string, id: string, input: number) => JSON.stringify({
   type: 'assistant', sessionId: sid, requestId: 'req_' + id, timestamp: new Date().toISOString(),
-  message: { id, model: 'claude-sonnet-5', usage: { input_tokens: input, output_tokens: 0 } } });
+  message: { id, model: 'claude-sonnet-4-5', usage: { input_tokens: input, output_tokens: 0 } } });
 
 test('claude session cost includes subagent transcripts (<session>/subagents/agent-*.jsonl)', async () => {
   const d = sandbox();
