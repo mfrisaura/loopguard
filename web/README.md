@@ -1,6 +1,6 @@
 # LoopGuard web (dashboard + API + landing)
 
-Next.js 16 (App Router) + Prisma 6 + Postgres + Stripe (test mode). Local only so far — not deployed.
+Next.js 16 (App Router) + Prisma 6 + Postgres + Stripe (test mode). Deployed on Railway at https://tryloopguard.com (redeploys when files in `web/` change on `main`).
 
 ## Run locally
 ```bash

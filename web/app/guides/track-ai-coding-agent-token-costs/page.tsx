@@ -29,7 +29,7 @@ export default function Page() {
       <tbody>
         <tr><td>Claude Code</td><td><code>~/.claude/projects/&lt;project&gt;/&lt;session&gt;.jsonl</code> (or <code>$CLAUDE_CONFIG_DIR/projects</code>)</td><td>One JSON line per event. Assistant messages carry <code>message.usage</code>: <code>input_tokens</code>, <code>output_tokens</code>, <code>cache_read_input_tokens</code>, <code>cache_creation_input_tokens</code>, plus the model.</td></tr>
         <tr><td>Codex CLI</td><td><code>~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl</code> (or <code>$CODEX_HOME</code>)</td><td><code>token_count</code> events with <code>last_token_usage</code> (this turn) and <code>total_token_usage</code> (running total). The model is in the preceding <code>turn_context</code> / <code>session_meta</code>.</td></tr>
-        <tr><td>Cursor</td><td><code>state.vscdb</code> (SQLite) in Cursor’s <code>User/globalStorage</code> folder</td><td>Chat “bubbles” in the <code>cursorDiskKV</code> table (<code>bubbleId:*</code> keys). Some carry a <code>tokenCount</code>; many do not.</td></tr>
+        <tr><td>Cursor</td><td><code>state.vscdb</code> (SQLite) in Cursor’s <code>User/globalStorage</code> folder</td><td>Chat “bubbles” in the <code>cursorDiskKV</code> table (<code>bubbleId:*</code> keys). Some carry a <code>tokenCount</code>; many do not. The <code>cursor-agent</code> CLI keeps its chats elsewhere (<code>~/.cursor/chats/</code>). Exact per-turn counts are only handed to hooks: the <code>stop</code> hook gets <code>input_tokens</code> (which includes cache reads and writes), <code>output_tokens</code>, <code>cache_read_tokens</code> and <code>cache_write_tokens</code>.</td></tr>
       </tbody>
     </table>
 

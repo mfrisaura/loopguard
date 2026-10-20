@@ -1,6 +1,6 @@
 {
   "name": "loopguard-cli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Budget fuse and runaway-loop killer for Claude Code, Codex CLI and Cursor",
   "main": "dist/cli.js",
   "scripts": {

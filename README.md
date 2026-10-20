@@ -1,4 +1,4 @@
-# LoopGuard (v0.1.0)
+# LoopGuard
 
 Budget fuse + runaway-loop killer for **Claude Code**, **Codex CLI** and **Cursor**.
 `ccusage` tells you what you spent. LoopGuard stops you spending it.
@@ -33,6 +33,7 @@ node dist/cli.js uninstall       # removes only LoopGuard entries; --restore put
 | Command | What it does |
 |---|---|
 | `init [--agent claude,codex,cursor]` | Adds `PreToolUse`+`Stop` hooks (Cursor: `preToolUse`+`stop`). Original file backed up once to `~/.loopguard/backups/`. Idempotent. Refuses to edit invalid JSON. |
+| `--version` | Prints the installed version. |
 | `uninstall [--agent …] [--restore]` | Strips LoopGuard hooks (keeps your other hooks/settings) or restores the original file byte-for-byte. Deletes files LoopGuard created. |
 | `report` | Cross-agent token + estimated $ table. Incremental index in `~/.loopguard/index.json`. |
 | `status` | Today's spend vs caps, which agents are guarded, last 5 trips. |
@@ -58,21 +59,42 @@ Trips are logged to `~/.loopguard/trips.jsonl`.
 |---|---|---|---|
 | Claude Code | `~/.claude/projects/**/*.jsonl` (dedup by message id + request id); session spend from hook's `transcript_path` plus its `subagents/agent-*.jsonl` | `hookSpecificOutput.permissionDecision: "deny"` | `{"continue": false, "stopReason": …}` |
 | Codex CLI | `~/.codex/sessions/**/rollout-*.jsonl`, `token_count.last_token_usage` per turn, cached input split out, rate-limit re-emits skipped | exit code 2 + reason on stderr | Repeated denies (Codex hooks have no session-halt field) |
-| Cursor | `state.vscdb` → `cursorDiskKV` `bubbleId:*` rows (`tokenCount`; chars/4 estimate when absent) | `{"permission":"deny", …}` | Repeated denies |
+| Cursor | Token counts Cursor sends to the `stop` hook at the end of each turn (logged to `~/.loopguard/cursor-usage.jsonl`), plus `state.vscdb` → `cursorDiskKV` `bubbleId:*` rows (`tokenCount`; chars/4 estimate when absent). Per chat, the larger of the two is used. | `{"permission":"deny", …}` | Repeated denies |
 
-Notes from testing against the real CLIs (Claude Code 2.1.302, Codex 0.163):
+Notes from testing against the real CLIs (Claude Code 2.1.302, Codex 0.163, Cursor CLI 2026.10.19):
 - **Codex asks you to trust new hooks.** After `loopguard init`, open `codex`, run `/hooks` and trust the two LoopGuard
   hooks. Until you do, Codex skips them without saying anything in `codex exec`.
 - **Claude Code halts on `continue: false` in recent versions** (verified on 2.1.302). Older builds (for example 2.1.197,
   which npm still installs on Node 20) honor the deny but keep the session going.
+- **Cursor hooks were checked with Cursor's own hook runner**, not a live model session: `scripts/cursor-hooks-e2e.js`
+  loads the installed `cursor-agent`'s hook loader and executor, and confirms Cursor reads `~/.cursor/hooks.json`,
+  sends the payload on stdin, accepts LoopGuard's replies, and blocks the tool call on a loop or cap deny. Cursor's
+  `conversation_id` is the chat's composerId (the `state.vscdb` key); this was read from Cursor 3.25.9's source.
+- **Cursor spend updates once per turn.** Cursor reports token usage to the `stop` hook when a turn ends, so a cap is
+  enforced from the next tool call after the turn that crossed it. The `cursor-agent` CLI keeps chats in
+  `~/.cursor/chats/` rather than `state.vscdb`, so for the CLI the `stop` hook is the only cost source. Loop
+  detection doesn't depend on cost data. Spend inside Cursor subagents (Task tool) isn't reported to hooks.
+- **Cursor also runs Claude Code hooks** from `~/.claude/settings.json` ("third-party hooks"). When LoopGuard is set
+  up for both, the Claude hook stands down inside Cursor so you get one deny, not two; with only the Claude hook
+  installed, it enforces for Cursor.
+- **Cursor cloud agents** only load project hooks (`.cursor/hooks.json` in the repo), so `loopguard init`'s user-level
+  hooks don't cover them.
 
-Pricing: built-in list-price table per 1M tokens (`src/pricing.ts`); override with `~/.loopguard/pricing.json`,
-e.g. `{"my-model": {"input": 2, "output": 8, "cacheRead": 0.2, "cacheWrite": 0}}`. Costs are **estimates**;
-subscription plans (Claude Max, ChatGPT, Cursor Pro) are not billed per token.
+Pricing: built-in API list-price table per 1M tokens (`src/pricing.ts`, checked against Anthropic, OpenAI and Cursor's
+pricing pages on 2026-10-20): Claude (Opus 4 → 5.5, Sonnet 4 → 5.5, Haiku, Fable/Mythos), OpenAI/Codex (gpt-4.1 → gpt-6.1-sol,
+`*-codex*`, o-series), Cursor's Composer and Grok models, Auto, and the Gemini/Kimi/GLM/Muse models Cursor offers. Model
+names are normalized first, so `claude-4.5-sonnet` (Cursor) and `claude-sonnet-4-5-20250929` (Claude Code) price the same.
+Fast/priority variants without their own row cost 2x; long-context tiers (OpenAI >272k, Haiku 5.5 >100k) apply per
+request. Unknown models fall back to their family, then to $3 in / $15 out. Override with `~/.loopguard/pricing.json`
+(substring match), e.g. `{"my-model": {"input": 2, "output": 8, "cacheRead": 0.2, "cacheWrite": 0}}`. Costs are
+**estimates**; subscription plans (Claude Max, ChatGPT, Cursor) are not billed per token, and Teams/Enterprise surcharges
+are not included.
 
 ## Tests
-`npm test` → 29 tests: parsers against fixture logs (`test/fixtures/`), pricing, install/uninstall/restore for all three
-agents, caps, loop + spiral detection, pause, and end-to-end hook calls through the compiled CLI.
+`npm test` → 44 tests: parsers against fixture logs (`test/fixtures/`), pricing, install/uninstall/restore for all three
+agents, caps, loop + spiral detection, pause, the Cursor usage ledger, and end-to-end hook calls through the compiled CLI
+(build first). With `cursor-agent` installed, `node scripts/cursor-hooks-e2e.js` runs LoopGuard's hooks through
+Cursor's own hook runner in a throwaway HOME (no login needed).
 
 Env overrides (used by tests): `LOOPGUARD_USER_HOME`, `LOOPGUARD_DIR`, `LOOPGUARD_CURSOR_DB`, `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `LOOPGUARD_BIN`.
 
