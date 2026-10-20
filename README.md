@@ -66,10 +66,16 @@ Notes from testing against the real CLIs (Claude Code 2.1.302, Codex 0.163, Curs
   hooks. Until you do, Codex skips them without saying anything in `codex exec`.
 - **Claude Code halts on `continue: false` in recent versions** (verified on 2.1.302). Older builds (for example 2.1.197,
   which npm still installs on Node 20) honor the deny but keep the session going.
-- **Cursor hooks were checked with Cursor's own hook runner**, not a live model session: `scripts/cursor-hooks-e2e.js`
-  loads the installed `cursor-agent`'s hook loader and executor, and confirms Cursor reads `~/.cursor/hooks.json`,
-  sends the payload on stdin, accepts LoopGuard's replies, and blocks the tool call on a loop or cap deny. Cursor's
-  `conversation_id` is the chat's composerId (the `state.vscdb` key); this was read from Cursor 3.25.9's source.
+- **Cursor was tested live** with `cursor-agent` 2026.10.19 (Composer 2.5, interactive mode, 2026-10-20): Cursor ran the
+  hooks from `~/.cursor/hooks.json`, the `stop` hook reported each turn's tokens, LoopGuard's session total matched the
+  per-turn token counts, and with `sessionCapUsd` at $0.05 the first tool call after the turn that crossed it was
+  rejected ("session spend $0.06 reached cap $0.05"); the model then stopped and reported the cap. The hook's
+  `conversation_id` equals Cursor's `session_id`/chat id, which is the session key LoopGuard uses.
+  `scripts/cursor-hooks-e2e.js` also exercises Cursor's hook runner offline (no model calls).
+- **Headless `cursor-agent -p` runs are not cost-capped.** In print mode Cursor fires `sessionStart`, `preToolUse`,
+  `postToolUse` and `sessionEnd`, but not `stop` or `afterAgentResponse`, and no hook payload or local file carries token
+  counts. Loop detection still blocks repeated calls there; session and daily caps only see interactive CLI and editor
+  turns. Use Cursor's own spend limit for scripted runs.
 - **Cursor spend updates once per turn.** Cursor reports token usage to the `stop` hook when a turn ends, so a cap is
   enforced from the next tool call after the turn that crossed it. The `cursor-agent` CLI keeps chats in
   `~/.cursor/chats/` rather than `state.vscdb`, so for the CLI the `stop` hook is the only cost source. Loop

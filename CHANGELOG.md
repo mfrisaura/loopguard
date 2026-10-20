@@ -2,7 +2,10 @@
 
 ## 0.1.2 (unreleased, not yet on npm)
 
-Cursor, checked against Cursor's own hook runner (`cursor-agent` 2026.10.19) and Cursor 3.25.9's source:
+Cursor, tested live with `cursor-agent` 2026.10.19 (interactive mode: hooks ran, stop-hook tokens priced, $0.05
+session cap denied the next tool call; `conversation_id` = session id) and against Cursor's hook runner and
+Cursor 3.25.9's source. Known gap: headless `cursor-agent -p` sends no token counts to hooks, so caps can't see that
+spend (documented; loop detection still applies).
 - **Cursor session and daily caps now see real token counts.** Cursor sends each turn's tokens to the `stop` hook;
   LoopGuard records them in `~/.loopguard/cursor-usage.jsonl` (cache reads/writes split out of `input_tokens`), prices
   them, and uses them for caps and `report`. Per chat, the larger of this and the `state.vscdb` estimate is used, so
