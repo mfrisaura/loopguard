@@ -4,8 +4,8 @@ import { Agent, UsageEvent } from './types';
 import { costOf } from './pricing';
 import { claudeFiles, parseClaudeFile } from './parsers/claude';
 import { codexFiles, parseCodexFile } from './parsers/codex';
-import { parseCursorDb } from './parsers/cursor';
-import { cursorDbPath, lgDir } from './paths';
+import { parseCursorDb, parseCursorLedger } from './parsers/cursor';
+import { cursorDbPath, cursorLedgerPath, lgDir } from './paths';
 import { localDay, readJson, writeJson } from './util';
 
 export interface Row {
@@ -55,9 +55,32 @@ export async function collectRows(opts: { agents?: Agent[]; noCache?: boolean } 
   };
   if (agents.includes('claude')) for (const f of claudeFiles()) await handle(f, () => parseClaudeFile(f));
   if (agents.includes('codex')) for (const f of codexFiles()) await handle(f, () => parseCodexFile(f));
-  if (agents.includes('cursor')) { const db = cursorDbPath(); await handle(db, () => parseCursorDb(db)); }
+  const db = cursorDbPath(), ledger = cursorLedgerPath();
+  if (agents.includes('cursor')) {
+    await handle(db, () => parseCursorDb(db));
+    await handle(ledger, () => parseCursorLedger(ledger));
+  }
   if (!opts.noCache) { try { writeJson(indexFile(), next); } catch { /* read-only ok */ } }
-  return Object.values(next.files).flatMap(f => f.rows);
+  const rows: Row[] = [];
+  for (const [f, e] of Object.entries(next.files)) if (f !== db && f !== ledger) rows.push(...e.rows);
+  rows.push(...mergeCursor(next.files[db]?.rows || [], next.files[ledger]?.rows || []));
+  return rows.filter(r => agents.includes(r.agent));
+}
+
+/**
+ * Cursor spend has two sources: hook-reported turn usage (exact token counts, lands when a turn ends) and
+ * state.vscdb bubbles (often chars/4 estimates, but can update mid-turn). Per conversation, keep whichever
+ * source shows more spend, so neither double-counts nor under-reports.
+ */
+export function mergeCursor(dbRows: Row[], ledgerRows: Row[]): Row[] {
+  const by = (rows: Row[]) => { const m = new Map<string, Row[]>(); for (const r of rows) m.set(r.sessionId, [...(m.get(r.sessionId) || []), r]); return m; };
+  const a = by(dbRows), b = by(ledgerRows);
+  const out: Row[] = [];
+  for (const s of new Set([...a.keys(), ...b.keys()])) {
+    const x = a.get(s) || [], y = b.get(s) || [];
+    out.push(...(sum(y) >= sum(x) && y.length ? y : x));
+  }
+  return out;
 }
 
 export const sum = (rows: Row[]) => rows.reduce((a, r) => a + r.cost, 0);

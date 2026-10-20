@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'path';
 import { UsageEvent } from '../types';
 import { cursorDbPath } from '../paths';
 
@@ -40,4 +41,56 @@ export async function parseCursorDb(file = cursorDbPath()): Promise<UsageEvent[]
     stmt.free();
   } finally { db.close(); }
   return out;
+}
+
+const num = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) && x > 0 ? x : 0);
+
+/**
+ * Cursor (IDE 3.x and the `cursor-agent` CLI) sends the turn's token usage to `stop` and `afterAgentResponse`
+ * hooks: input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, plus conversation_id (= the
+ * composerId used as the state.vscdb key) and generation_id. input_tokens INCLUDES cache reads/writes
+ * (Cursor's own UI subtracts them), so we split them out here. Returns the ledger line, or null.
+ */
+export function cursorUsageFromHook(raw: any, now = Date.now()): Record<string, unknown> | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const total = num(raw.input_tokens), out = num(raw.output_tokens), cr = num(raw.cache_read_tokens), cw = num(raw.cache_write_tokens);
+  if (!total && !out && !cr && !cw) return null;
+  const conv = raw.conversation_id || raw.session_id;
+  if (!conv) return null;
+  return {
+    t: new Date(now).toISOString(), conv: String(conv), gen: raw.generation_id ? String(raw.generation_id) : '',
+    model: String(raw.model_id || raw.model || 'cursor-default'),
+    in: Math.max(total - cr - cw, 0), out, cr, cw,
+  };
+}
+
+export function recordCursorUsage(file: string, raw: any, now = Date.now()): boolean {
+  const line = cursorUsageFromHook(raw, now);
+  if (!line) return false;
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.appendFileSync(file, JSON.stringify(line) + '\n');
+  return true;
+}
+
+/** Parse LoopGuard's Cursor ledger. `stop` and `afterAgentResponse` may both report a turn: one entry per generation. */
+export function parseCursorLedger(file: string): UsageEvent[] {
+  let text = '';
+  try { text = fs.readFileSync(file, 'utf8'); } catch { return []; }
+  const byKey = new Map<string, UsageEvent>();
+  let i = 0;
+  for (const l of text.split('\n')) {
+    if (!l.trim()) continue;
+    let j: any;
+    try { j = JSON.parse(l); } catch { continue; }
+    if (!j?.conv) continue;
+    const e: UsageEvent = {
+      agent: 'cursor', sessionId: String(j.conv), timestamp: j.t || new Date(0).toISOString(), model: j.model || 'cursor-default',
+      inputTokens: num(j.in), outputTokens: num(j.out), cacheReadTokens: num(j.cr), cacheWriteTokens: num(j.cw),
+    };
+    const key = j.gen ? `${j.conv}|${j.gen}` : `#${i++}`;
+    const prev = byKey.get(key);
+    const size = (x: UsageEvent) => x.inputTokens + x.outputTokens + x.cacheReadTokens + x.cacheWriteTokens;
+    if (!prev || size(e) >= size(prev)) byKey.set(key, prev ? { ...e, timestamp: prev.timestamp } : e);
+  }
+  return [...byKey.values()];
 }

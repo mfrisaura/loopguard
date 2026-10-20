@@ -22,7 +22,9 @@ export function normalizeInput(agent: Agent, raw: any, eventArg?: string): HookI
   return {
     agent,
     event: eventArg || raw?.hook_event_name || 'PreToolUse',
-    sessionId: String(raw?.session_id || raw?.conversation_id || raw?.sessionId || 'unknown'),
+    // Cursor: conversation_id is the composerId that keys state.vscdb and the stop-hook usage ledger.
+    sessionId: String((agent === 'cursor' ? raw?.conversation_id || raw?.session_id : raw?.session_id || raw?.conversation_id)
+      || raw?.sessionId || 'unknown'),
     toolName: raw?.tool_name ?? raw?.toolName,
     toolInput: raw?.tool_input ?? raw?.toolInput ?? raw?.command,
     transcriptPath: raw?.transcript_path || undefined,
@@ -66,7 +68,9 @@ const fmt = (n: number) => `$${n.toFixed(2)}`;
 
 export async function evaluate(inp: HookInput, opts: { cfg?: Config; now?: number; costs?: { session: number; daily: number } } = {}): Promise<Verdict> {
   const v = await evaluateInner(inp, opts);
-  if (v.verdict.action === 'deny') logTrip(inp, v.verdict, v.s, v.d, opts.now ?? Date.now());
+  // Only Claude Code can act on a deny outside PreToolUse (Stop -> continue:false); elsewhere it's a no-op, so don't log a trip.
+  const enforceable = inp.event.toLowerCase() === 'pretooluse' || inp.agent === 'claude';
+  if (v.verdict.action === 'deny' && enforceable) logTrip(inp, v.verdict, v.s, v.d, opts.now ?? Date.now());
   return v.verdict;
 }
 
@@ -133,12 +137,29 @@ function logTrip(inp: HookInput, v: Extract<Verdict, { action: 'deny' }>, s: num
   } catch { /* ignore */ }
 }
 
+/**
+ * Cursor also runs Claude Code hooks from ~/.claude/settings.json ("third-party hooks"), feeding them its own
+ * payload. Its payload carries cursor_version (and Cursor sets CURSOR_VERSION for hook processes).
+ */
+export function isCursorPayload(raw: any, env: NodeJS.ProcessEnv = process.env): boolean {
+  return !!raw && typeof raw === 'object' &&
+    (typeof raw.cursor_version === 'string' || (!!raw.conversation_id && !!env.CURSOR_VERSION));
+}
+
+/** Fail-open output when LoopGuard itself errors: Cursor treats empty stdout as a failed hook. */
+export function failOpenOutput(agent: Agent, event: string): string {
+  if (agent !== 'cursor') return '';
+  return event.toLowerCase() === 'pretooluse' ? JSON.stringify({ permission: 'allow' }) : '{}';
+}
+
 /** Translate verdict into each agent's hook protocol. Returns stdout text and exit code. */
 export function render(inp: HookInput, v: Verdict): { stdout: string; stderr: string; code: number } {
   const ev = inp.event.toLowerCase();
   if (v.action === 'allow') {
     if (v.warn && inp.agent === 'claude') return { stdout: JSON.stringify({ systemMessage: v.warn }), stderr: '', code: 0 };
-    return { stdout: inp.agent === 'cursor' && ev === 'pretooluse' ? JSON.stringify({ permission: 'allow' }) : '', stderr: '', code: 0 };
+    // Cursor logs an empty stdout as a failed hook ("empty_stdout"), so always answer with JSON.
+    if (inp.agent === 'cursor') return { stdout: ev === 'pretooluse' ? JSON.stringify({ permission: 'allow' }) : '{}', stderr: '', code: 0 };
+    return { stdout: '', stderr: '', code: 0 };
   }
   switch (inp.agent) {
     case 'claude': {

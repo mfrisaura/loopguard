@@ -4,10 +4,11 @@ import path from 'path';
 import { Agent } from './types';
 import { collectRows } from './usage';
 import { table, group, GroupBy } from './report';
-import { evaluate, normalizeInput, render, dailyCost } from './guard';
-import { detectAgents, install, uninstall, configPath, hookCli, PKG_NAME } from './install';
+import { evaluate, normalizeInput, render, dailyCost, isCursorPayload, failOpenOutput } from './guard';
+import { detectAgents, install, uninstall, configPath, hookCli, PKG_NAME, cursorGuarded } from './install';
 import { loadConfig, setConfig, configFile } from './config';
-import { lgDir } from './paths';
+import { cursorLedgerPath, lgDir } from './paths';
+import { recordCursorUsage } from './parsers/cursor';
 import { localDay, readJson, writeJson } from './util';
 import { sync, cloudFile, buildPayload } from './sync';
 
@@ -50,18 +51,31 @@ async function main() {
   const cmd = args[0];
   switch (cmd) {
     case 'hook': {
-      const agent = agentList()[0];
+      let agent = agentList()[0];
       if (!agent) process.exit(0);
       let raw: any = {};
       try { const s = await readStdin(); raw = s.trim() ? JSON.parse(s) : {}; } catch { /* fail-open */ }
+      let event = flag('event') || raw?.hook_event_name || 'PreToolUse';
       try {
-        const inp = normalizeInput(agent, raw, flag('event'));
+        if (agent === 'claude' && isCursorPayload(raw)) {
+          // Cursor is running our Claude Code hook. If LoopGuard's Cursor hook is installed it handles this
+          // call; answering here too would double-count loops and duplicate deny messages.
+          if (cursorGuarded()) { process.stdout.write('{}'); process.exit(0); }
+          agent = 'cursor';
+        }
+        if (agent === 'cursor') {
+          try { recordCursorUsage(cursorLedgerPath(), raw); } catch { /* ignore */ }
+          if (/^afteragentresponse$/i.test(event)) { process.stdout.write('{}'); process.exit(0); }
+        }
+        const inp = normalizeInput(agent, raw, event);
         const out = render(inp, await evaluate(inp));
         if (out.stdout) process.stdout.write(out.stdout);
         if (out.stderr) process.stderr.write(out.stderr);
         process.exit(out.code);
       } catch (e) {
         try { fs.appendFileSync(path.join(lgDir(), 'errors.log'), `${new Date().toISOString()} ${(e as Error).stack}\n`); } catch {}
+        const fo = failOpenOutput(agent, event);
+        if (fo) process.stdout.write(fo);
         process.exit(0); // fail-open: never break the agent on our bugs
       }
     }

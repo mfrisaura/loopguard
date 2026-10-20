@@ -59,6 +59,13 @@ export function configPath(agent: Agent): string {
 export const isOurs = (cmd: unknown) =>
   typeof cmd === 'string' && /loopguard/i.test(cmd) && / hook --agent (claude|codex|cursor)\b/.test(cmd);
 
+/** True when LoopGuard's own hook is installed in ~/.cursor/hooks.json. */
+export function cursorGuarded(): boolean {
+  const c = readJson<any>(configPath('cursor'), null);
+  const list = c?.hooks?.preToolUse;
+  return Array.isArray(list) && list.some((h: any) => isOurs(h?.command) && / --agent cursor\b/.test(h.command));
+}
+
 /** Pure transforms (tested). */
 export function addHooks(agent: Agent, cfg: any, cmd: string): any {
   const c = cfg && typeof cfg === 'object' ? JSON.parse(JSON.stringify(cfg)) : {};
