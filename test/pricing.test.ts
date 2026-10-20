@@ -23,6 +23,8 @@ test('pricing: Anthropic list prices (Oct 2026)', () => {
   assert.deepEqual(io('claude-opus-4-1-20250805'), [15, 75, 1.5]);
   assert.deepEqual(io('claude-opus-4-5-20251101'), [5, 25, 0.5]);
   assert.deepEqual(io('claude-opus-4-8'), [5, 25, 0.5]);
+  assert.deepEqual(io('claude-4-sonnet-1m'), [6, 22.5, 0.6]);   // Cursor's 1M variant
+  assert.deepEqual(io('claude-4-sonnet'), [3, 15, 0.3]);
   assert.deepEqual(io('claude-opus-5'), [5, 25, 0.5]);
   assert.deepEqual(io('claude-opus-5-5'), [4, 20, 0.2]);
   assert.deepEqual(io('claude-sonnet-4-5-20250929'), [3, 15, 0.3]);

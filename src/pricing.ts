@@ -46,6 +46,7 @@ export const DEFAULT_PRICES: [RegExp, Price][] = [
   [/opus-4-7.*fast/, p(30, 150)],                           // Cursor: Opus 4.7 fast mode (research preview)
   [/opus-4-1|opus-4(-2025|-thinking|$)/, p(15, 75)],      // Opus 4 / 4.1; Opus 4.5+ fall through to 'opus'
   [/opus/, p(5, 25)],                                       // Opus 4.5, 4.6, 4.7, 4.8, 5
+  [/sonnet-4-1m/, p(6, 22.5)],                              // Cursor: Claude 4 Sonnet 1M (2x in, 1.5x out)
   [/sonnet-5-5/, p(2, 10, 0.1)],
   [/sonnet-5(-|$)/, p(2, 10, 0.2)],
   [/sonnet/, p(3, 15)],                                     // Sonnet 4, 4.5, 4.6

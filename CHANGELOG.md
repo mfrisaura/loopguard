@@ -17,7 +17,7 @@ Cursor, checked against Cursor's own hook runner (`cursor-agent` 2026.10.19) and
 
 Pricing (checked against Anthropic, OpenAI and Cursor pricing pages on 2026-10-20):
 - Added Claude Opus 4.8 / 5 / 5.5 (+ fast mode), Sonnet 4.6 / 5 / 5.5, Haiku 5.5 (>100k-token prompt tier), Fable and
-  Mythos 5 / 5.1, and correct per-model cache-read rates.
+  Mythos 5 / 5.1, Cursor's Claude 4 Sonnet 1M ($6/$22.50), and correct per-model cache-read rates.
 - Added OpenAI gpt-5.1 / 5.2 / 5.3-codex / 5.4 (+ mini, nano, pro) / 5.5 / 5.6 (sol, terra, luna) / gpt-6 (astra,
   sol, luna) / gpt-6.1-sol, `*-codex-mini`/`-max`, gpt-4.1 mini/nano, gpt-4o, o1/o3 variants; OpenAI cache-write prices
   where they exist; long-context (>272k) tiers.
