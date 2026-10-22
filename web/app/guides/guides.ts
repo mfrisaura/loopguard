@@ -35,6 +35,20 @@ export const GUIDES = [
     description: 'Hard spend limits for Codex CLI on an API key, credit and auto-reload limits on a ChatGPT plan, and how to add per-session and daily caps to Codex with hooks.',
     updated: '2026-10-19',
   },
+  {
+    slug: 'claude-code-usage-limit',
+    title: 'Claude Code usage limit reached: why it happens and how to monitor it',
+    short: 'Claude Code usage limits',
+    description: 'The 5-hour and weekly limits on Claude Pro and Max, what each "You\'ve hit your limit" message means, why long sessions drain them, how to watch usage with /usage and a status line, and how to stop runaway sessions early.',
+    updated: '2026-10-22',
+  },
+  {
+    slug: 'ai-coding-agent-budget-ci',
+    title: 'How to set a hard budget for AI coding agents in CI',
+    short: 'Budget AI agents in CI',
+    description: 'Per-run caps, job timeouts and key-level spend limits for Claude Code (claude -p), Codex CLI (codex exec) and Cursor CLI in GitHub Actions and other headless runs, plus loop detection with hooks.',
+    updated: '2026-10-22',
+  },
 ] as const;
 export type Guide = (typeof GUIDES)[number];
 export const guide = (slug: Guide['slug']) => GUIDES.find(g => g.slug === slug)!;

@@ -35,7 +35,7 @@ export default function Page() {
       <li>Leave usage credits off if you never want to pay beyond the plan. If you turn them on, set a limit. When you reach it with credits still available, Claude Code prompts you to raise or remove the limit rather than spending past it.</li>
       <li><code>/usage</code> (also available as <code>/cost</code>) shows your plan usage bars, a usage-credits row with this month’s spend against your limit, and a breakdown of what is eating your limits.</li>
     </ul>
-    <p>Even with no money at stake, a looping session can burn through your 5-hour or weekly limit and lock you out for days. The per-session cap below helps with that too.</p>
+    <p>Even with no money at stake, a looping session can burn through your 5-hour or weekly limit and lock you out for days. The per-session cap below helps with that too. For what each limit message means and how to watch your usage, see <a href="/guides/claude-code-usage-limit">Claude Code usage limits</a>.</p>
 
     <h2>Team and Enterprise: admin spend limits</h2>
     <p>Each seat’s allowance is the default ceiling. If admins turn on usage credits so members can keep going, they set spend limits at the organization, group or individual member level in the claude.ai admin settings (<strong>Organization settings → Usage</strong>). Members who hit a limit see a message naming which limit they hit. See Anthropic’s <a href="https://code.claude.com/docs/en/costs">Manage costs</a> page for the full list.</p>
@@ -50,7 +50,7 @@ claude -p --max-budget-usd 5.00 --max-turns 30 "..."   # also cap the number of 
       <li>It is checked against Claude Code’s own cost estimate, which can differ from your bill, and the final response can push spend past the cap. Leave headroom.</li>
       <li>When you resume a conversation with <code>--continue</code> or <code>--resume</code>, the cost of earlier runs doesn’t count toward the new cap.</li>
     </ul>
-    <p>The Agent SDK has the same caps as <code>maxBudgetUsd</code> / <code>max_budget_usd</code> and <code>maxTurns</code> / <code>max_turns</code>.</p>
+    <p>For a full CI setup across Claude Code, Codex and Cursor (job timeouts, dedicated keys, GitHub Actions), see <a href="/guides/ai-coding-agent-budget-ci">setting a hard budget for AI coding agents in CI</a>. The Agent SDK has the same caps as <code>maxBudgetUsd</code> / <code>max_budget_usd</code> and <code>maxTurns</code> / <code>max_turns</code>.</p>
 
     <h2>The gap: interactive sessions and daily totals</h2>
     <p>Put together, the native controls give you a monthly ceiling (Console, usage credits, admin limits) and a per-run cap for <code>claude -p</code>. What is missing is a cap on the long interactive session you start in the morning and leave working, and a <em>daily</em> cap across all your sessions (and other agents). You can see the session’s estimated cost in <code>/usage</code> or in a <a href="https://code.claude.com/docs/en/statusline">custom status line</a>, but nothing stops the session when it passes a number.</p>
