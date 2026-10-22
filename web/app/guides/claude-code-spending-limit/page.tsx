@@ -68,7 +68,7 @@ loopguard status                        # today's spend vs caps, recent trips`}<
     <ul>
       <li>At 80% of either cap (<code>warnAtPct</code>), Claude Code shows a warning such as <code>LoopGuard: session $8.10/$10.00, today $31.20/$40.00</code>.</li>
       <li>At the cap, the next tool call is denied and the session is ended with a reason: <code>LoopGuard: session spend $10.04 reached cap $10.00. Stopping. Raise with `loopguard config set sessionCapUsd &lt;n&gt;` or `loopguard pause 15`.</code></li>
-      <li>The same hook catches loops: an identical tool call 5 times within 10 minutes is denied, and a $10 jump in 5 minutes halts the session (<code>loop.maxRepeats</code>, <code>loop.spiralUsd</code>).</li>
+      <li>The same hook catches loops: the same tool call 5 times within 10 minutes with no change to the files or its output in between is denied, and a $10 jump in 5 minutes halts the session (<code>loop.maxRepeats</code>, <code>loop.spiralUsd</code>).</li>
       <li><code>loopguard pause 15</code> lifts enforcement for 15 minutes when you really do want to keep going. <code>loopguard config set sessionCapUsd 0</code> turns that cap off.</li>
     </ul>
     <p>For headless runs, use both: <code>--max-budget-usd</code> for the run, and LoopGuard’s daily cap so twenty separate $5 runs can’t add up to $100 without you noticing.</p>

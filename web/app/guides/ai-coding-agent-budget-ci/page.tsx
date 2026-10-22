@@ -74,7 +74,7 @@ jq '.total_cost_usd' result.json   # the run's estimated cost, for your CI logs`
     <pre>{`npm i -g loopguard-cli
 loopguard init --agent claude,codex     # writes ~/.claude/settings.json and ~/.codex/hooks.json
 loopguard config set sessionCapUsd 3    # estimated $ per agent session
-loopguard config set loop.maxRepeats 3  # identical tool calls allowed within 10 minutes
+loopguard config set loop.maxRepeats 3  # repeats of the same call (with no progress) allowed within 10 minutes
 
 claude -p --max-budget-usd 3 "..."                        # Claude Code: hooks load from ~/.claude
 codex exec --dangerously-bypass-hook-trust \\
@@ -84,7 +84,7 @@ loopguard report --by session                             # estimated cost per s
     <ul>
       <li><strong>Claude Code <code>--bare</code> skips hooks.</strong> Anthropic recommends <code>--bare</code> for scripted runs, and it doesn’t read <code>~/.claude</code>, so LoopGuard won’t run. Either leave <code>--bare</code> off, or pass the settings file that holds the hooks with <code>--settings ~/.claude/settings.json</code>, which the headless docs list as the way to load settings in bare mode. Don’t use <code>--no-session-persistence</code> either: LoopGuard prices the session from its transcript.</li>
       <li><strong>Codex needs its hooks trusted.</strong> Codex skips new hooks until someone trusts them in <code>/hooks</code>, and a fresh runner has no saved trust, so <code>codex exec</code> would skip LoopGuard without a warning. For a runner you control, <code>--dangerously-bypass-hook-trust</code> runs enabled hooks for that invocation; only use it where you control every hook on the machine. Don’t use <code>--ephemeral</code>, which stops Codex writing the session log LoopGuard reads. Codex hooks can’t end a session, so a tripped cap denies every further tool call.</li>
-      <li><strong>Cursor headless runs are not cost-capped.</strong> <code>agent -p</code> doesn’t send token counts to any hook, so LoopGuard’s session and daily caps can’t see that spend. Loop detection still blocks repeated identical tool calls.</li>
+      <li><strong>Cursor headless runs are not cost-capped.</strong> <code>agent -p</code> doesn’t send token counts to any hook, so LoopGuard’s session and daily caps can’t see that spend. Loop detection still blocks repeated tool calls that make no progress.</li>
       <li><strong>The daily cap is per machine.</strong> It sums spend in that runner’s logs for the local day. On an ephemeral runner that is one job; on a persistent self-hosted runner it covers every job that day.</li>
       <li>Costs are <strong>estimates at API list prices</strong>, and checks happen at tool calls and turn ends, so spend can pass a cap by up to one turn. LoopGuard fails open: on an internal error the agent keeps working and the error goes to <code>~/.loopguard/errors.log</code>. Keep the key limit as the backstop.</li>
     </ul>

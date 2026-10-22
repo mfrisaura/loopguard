@@ -68,11 +68,11 @@ loopguard init --agent codex    # adds hooks to ~/.codex/hooks.json (backed up f
 loopguard config set sessionCapUsd 10   # estimated $ per session (default 25)
 loopguard config set dailyCapUsd 40     # estimated $ per local day, across all guarded agents (default 100)
 loopguard report --agent codex --by session`}</pre>
-    <p><strong>Then trust the hooks, or they won’t run.</strong> Codex skips new or changed hooks until you review them. Open <code>codex</code>, run <code>/hooks</code>, and trust the two LoopGuard hooks. Until you do, <code>codex exec</code> skips them without any warning. Codex tracks trust by the hook’s exact definition, so if you re-run <code>loopguard init</code> from a different install (say, after switching from <code>npx</code> to a global install), trust them again. For one-off automation that already vets its hook sources, Codex also has <code>--dangerously-bypass-hook-trust</code>.</p>
+    <p><strong>Then trust the hooks, or they won’t run.</strong> Codex skips new or changed hooks until you review them. Open <code>codex</code>, run <code>/hooks</code>, and trust the three LoopGuard hooks. Until you do, <code>codex exec</code> skips them without any warning. Codex tracks trust by the hook’s exact definition, so if you re-run <code>loopguard init</code> from a different install (say, after switching from <code>npx</code> to a global install), trust them again. For one-off automation that already vets its hook sources, Codex also has <code>--dangerously-bypass-hook-trust</code>.</p>
     <p>With the hooks trusted:</p>
     <ul>
       <li>Past the session or daily cap, or after a $10 jump within 5 minutes, every tool call is denied with a reason such as <code>LoopGuard: today's spend across agents $40.12 reached daily cap $40.00. Stopping.</code> Codex hooks have no “end session” field, so repeated denial is how the session stops making progress.</li>
-      <li>The same identical tool call 5 times within 10 minutes is denied (<code>loop.maxRepeats</code>, <code>loop.windowSec</code>).</li>
+      <li>The same tool call 5 times within 10 minutes is denied if nothing changed in between: the git working tree and the command’s output (from Codex’s <code>PostToolUse</code> hook) both stayed the same (<code>loop.maxRepeats</code>, <code>loop.windowSec</code>).</li>
       <li><code>loopguard pause 15</code> lifts enforcement for 15 minutes; <code>loopguard uninstall --agent codex --restore</code> puts your original <code>hooks.json</code> back.</li>
     </ul>
 

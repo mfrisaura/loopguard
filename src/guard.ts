@@ -7,16 +7,20 @@ import { lgDir } from './paths';
 import { parseClaudeFile } from './parsers/claude';
 import { parseCodexFile } from './parsers/codex';
 import { aggregate, collectRows, sum } from './usage';
+import { callKey, outputHash, payloadDir, payloadOutput, workTreeFingerprint } from './progress';
 import { localDay, readJson, writeJson } from './util';
 
 export interface HookInput {
   agent: Agent; event: string; sessionId: string; toolName?: string; toolInput?: unknown; transcriptPath?: string;
+  toolUseId?: string; cwd?: string; output?: unknown;
 }
 export type Verdict =
   | { action: 'allow'; warn?: string }
   | { action: 'deny'; reason: string; halt: boolean; kind: 'session_cap' | 'daily_cap' | 'loop' | 'spiral' };
 
-interface SessionState { calls: { h: string; t: number }[]; costs: { c: number; t: number }[]; denies: number }
+/** h = call key, t = time, id = tool_use_id, fp = git working-tree fingerprint at PreToolUse, o = output hash. */
+interface CallEntry { h: string; t: number; id?: string; fp?: string; o?: string }
+interface SessionState { calls: CallEntry[]; costs: { c: number; t: number }[]; denies: number }
 
 export function normalizeInput(agent: Agent, raw: any, eventArg?: string): HookInput {
   return {
@@ -28,11 +32,70 @@ export function normalizeInput(agent: Agent, raw: any, eventArg?: string): HookI
     toolName: raw?.tool_name ?? raw?.toolName,
     toolInput: raw?.tool_input ?? raw?.toolInput ?? raw?.command,
     transcriptPath: raw?.transcript_path || undefined,
+    toolUseId: typeof raw?.tool_use_id === 'string' && raw.tool_use_id ? raw.tool_use_id : undefined,
+    cwd: payloadDir(raw),
+    output: payloadOutput(raw),
   };
 }
 
 const stateFile = (a: Agent, s: string) =>
   path.join(lgDir(), 'state', `${a}-${s.replace(/[^\w.-]/g, '_').slice(0, 120)}.json`);
+/** Post-tool output hashes live in their own append-only file so post hooks never clobber the PreToolUse state. */
+const outputsFile = (a: Agent, s: string) => stateFile(a, s).replace(/\.json$/, '.out.jsonl');
+
+export const isPostToolEvent = (event: string) => /^posttooluse(failure)?$/i.test(event);
+
+/** Called from PostToolUse / PostToolUseFailure hooks: remember a normalized hash of the tool's output. */
+export function recordToolOutput(inp: HookInput, cfg: Config = loadConfig(), now = Date.now()): boolean {
+  if (!cfg.loop.enabled || !cfg.loop.progressAware || !inp.toolName) return false;
+  const o = outputHash(inp.output);
+  if (!o) return false;
+  const h = callKey(inp.toolName, inp.toolInput, { normalizeShell: cfg.loop.normalizeShell, cwd: inp.cwd });
+  const f = outputsFile(inp.agent, inp.sessionId);
+  fs.mkdirSync(path.dirname(f), { recursive: true });
+  fs.appendFileSync(f, JSON.stringify({ id: inp.toolUseId, h, o, t: now }) + '\n');
+  return true;
+}
+
+/** Fill in output hashes on entries from the post-hook file (matched by tool_use_id, else by call key + time). */
+function attachOutputs(inp: HookInput, calls: CallEntry[], winMs: number, now: number) {
+  const f = outputsFile(inp.agent, inp.sessionId);
+  let lines: { id?: string; h: string; o: string; t: number }[] = [];
+  try {
+    const txt = fs.readFileSync(f, 'utf8');
+    lines = txt.split('\n').filter(Boolean).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+    if (txt.length > 256 * 1024) {
+      lines = lines.filter(l => now - l.t <= winMs).slice(-500);
+      fs.writeFileSync(f, lines.map(l => JSON.stringify(l)).join('\n') + (lines.length ? '\n' : ''));
+    }
+  } catch { return; }
+  const byId = new Map<string, string>();
+  for (const l of lines) if (l.id) byId.set(l.id, l.o);
+  for (let i = 0; i < calls.length; i++) {
+    const c = calls[i];
+    if (c.o) continue;
+    if (c.id && byId.has(c.id)) { c.o = byId.get(c.id); continue; }
+    if (c.id) continue;
+    // No tool_use_id: first output with the same key after this call and before the next call with that key.
+    const next = calls.slice(i + 1).find(x => x.h === c.h);
+    const hit = lines.find(l => !l.id && l.h === c.h && l.t >= c.t && (!next || l.t < next.t));
+    if (hit) c.o = hit.o;
+  }
+}
+
+/** Plain-words block message: why it tripped and what to do instead. */
+export function loopReason(tool: string, n: number, windowSec: number, halt: boolean, progressAware: boolean): string {
+  const why = `LoopGuard: loop detected — the same ${tool} call ran ${n}x in ${windowSec}s` +
+    (progressAware ? ' with no change to the files or to its output in between' : '') + '.';
+  if (halt)
+    return `${why} Stopping the session (3rd loop block in a row). Stop retrying. Write down what you know so far — ` +
+      'the goal, what you tried, the exact failing output, and your best guess at the root cause — and hand it back to the user. ' +
+      'To allow more repeats: `loopguard config set loop.maxRepeats 8`, or `loopguard pause 15`.';
+  return `${why} This call was blocked. Don't rerun it, and don't rerun the same thing through a different command or wrapper. ` +
+    'First write down what you know so far — the goal, what you tried, the exact failing output, and your hypotheses — ' +
+    'in your reply or in .loopguard/checkpoint.md. Then find the root cause (read the error and the code involved, check your ' +
+    'assumptions, add logging if needed) and change something before running it again.';
+}
 
 export function isPaused(now = Date.now()): boolean {
   const p = readJson<{ until?: number }>(path.join(lgDir(), 'pause.json'), {});
@@ -64,9 +127,15 @@ export async function dailyCost(now = Date.now()): Promise<number> {
   return sum((await collectRows()).filter(r => r.day === today));
 }
 
+export interface EvalOpts {
+  cfg?: Config; now?: number; costs?: { session: number; daily: number };
+  /** Test hook: override the git working-tree fingerprint. */
+  fingerprint?: (inp: HookInput) => string | undefined;
+}
+
 const fmt = (n: number) => `$${n.toFixed(2)}`;
 
-export async function evaluate(inp: HookInput, opts: { cfg?: Config; now?: number; costs?: { session: number; daily: number } } = {}): Promise<Verdict> {
+export async function evaluate(inp: HookInput, opts: EvalOpts = {}): Promise<Verdict> {
   const v = await evaluateInner(inp, opts);
   // Only Claude Code can act on a deny outside PreToolUse (Stop -> continue:false); elsewhere it's a no-op, so don't log a trip.
   const enforceable = inp.event.toLowerCase() === 'pretooluse' || inp.agent === 'claude';
@@ -74,7 +143,7 @@ export async function evaluate(inp: HookInput, opts: { cfg?: Config; now?: numbe
   return v.verdict;
 }
 
-async function evaluateInner(inp: HookInput, opts: { cfg?: Config; now?: number; costs?: { session: number; daily: number } }): Promise<{ verdict: Verdict; s: number; d: number }> {
+async function evaluateInner(inp: HookInput, opts: EvalOpts): Promise<{ verdict: Verdict; s: number; d: number }> {
   const cfg = opts.cfg || loadConfig();
   const now = opts.now ?? Date.now();
   if (isPaused(now)) return { verdict: { action: 'allow' }, s: 0, d: 0 };
@@ -102,15 +171,30 @@ async function evaluateInner(inp: HookInput, opts: { cfg?: Config; now?: number;
         reason: `LoopGuard: cost spiral — ${fmt(delta)} spent in the last ${cfg.loop.spiralWindowSec}s (limit ${fmt(cfg.loop.spiralUsd)}). Stopping.` };
     }
     if (verdict.action === 'allow' && inp.toolName && inp.event.toLowerCase() === 'pretooluse') {
-      const h = crypto.createHash('sha1').update(`${inp.toolName}\0${JSON.stringify(inp.toolInput ?? null)}`).digest('hex');
+      const pa = cfg.loop.progressAware;
+      const h = callKey(inp.toolName, inp.toolInput, { normalizeShell: cfg.loop.normalizeShell, cwd: inp.cwd });
       st.calls = st.calls.filter(x => now - x.t <= winMs);
-      st.calls.push({ h, t: now });
+      const entry: CallEntry = { h, t: now };
+      if (inp.toolUseId) entry.id = inp.toolUseId;
+      if (pa) {
+        const fp = opts.fingerprint ? opts.fingerprint(inp) : workTreeFingerprint(inp.cwd ?? process.cwd());
+        if (fp) entry.fp = fp;
+        const prior = st.calls.filter(x => x.h === h);
+        if (prior.length) {
+          try { attachOutputs(inp, st.calls, winMs, now); } catch { /* fail open */ }
+          const prev = prior[prior.length - 1], prev2 = prior[prior.length - 2];
+          const filesChanged = !!(prev.fp && entry.fp && prev.fp !== entry.fp);
+          const outputChanged = !!(prev2 && prev.o && prev2.o && prev.o !== prev2.o);
+          // Progress since the last identical call: this one starts a fresh count.
+          if (filesChanged || outputChanged) st.calls = st.calls.filter(x => x.h !== h);
+        }
+      }
+      st.calls.push(entry);
       const n = st.calls.filter(x => x.h === h).length;
       if (n >= cfg.loop.maxRepeats) {
         st.denies++;
-        verdict = { action: 'deny', kind: 'loop', halt: st.denies >= 3,
-          reason: `LoopGuard: loop detected — identical ${inp.toolName} call ${n}x in ${cfg.loop.windowSec}s. ` +
-            (st.denies >= 3 ? 'Stopping session.' : 'Blocked; try a different approach.') };
+        const halt = st.denies >= 3;
+        verdict = { action: 'deny', kind: 'loop', halt, reason: loopReason(inp.toolName, n, cfg.loop.windowSec, halt, pa) };
       }
     }
   }

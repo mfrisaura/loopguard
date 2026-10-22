@@ -4,7 +4,7 @@ import path from 'path';
 import { Agent } from './types';
 import { collectRows } from './usage';
 import { table, group, GroupBy } from './report';
-import { evaluate, normalizeInput, render, dailyCost, isCursorPayload, failOpenOutput } from './guard';
+import { evaluate, normalizeInput, render, dailyCost, isCursorPayload, failOpenOutput, isPostToolEvent, recordToolOutput } from './guard';
 import { detectAgents, install, uninstall, configPath, hookCli, PKG_NAME, cursorGuarded } from './install';
 import { loadConfig, setConfig, configFile } from './config';
 import { cursorLedgerPath, lgDir } from './paths';
@@ -68,6 +68,12 @@ async function main() {
           if (/^afteragentresponse$/i.test(event)) { process.stdout.write('{}'); process.exit(0); }
         }
         const inp = normalizeInput(agent, raw, event);
+        if (isPostToolEvent(event)) {
+          // Post-tool hooks only record an output hash for progress-aware loop detection; they never block.
+          try { recordToolOutput(inp); } catch { /* fail open */ }
+          if (agent === 'cursor') process.stdout.write('{}');
+          process.exit(0);
+        }
         const out = render(inp, await evaluate(inp));
         if (out.stdout) process.stdout.write(out.stdout);
         if (out.stderr) process.stderr.write(out.stderr);
@@ -91,7 +97,7 @@ async function main() {
       console.log(`Caps: session $${c.sessionCapUsd}, daily $${c.dailyCapUsd}. Loop: ${c.loop.maxRepeats} identical calls / ${c.loop.windowSec}s, spiral $${c.loop.spiralUsd}/${c.loop.spiralWindowSec}s.`);
       if (hookCli().startsWith('npx ')) console.log(`Tip: hooks will run via npx (slower). For ~0.1 s hooks: npm i -g ${PKG_NAME} && loopguard init`);
       if (list.includes('codex'))
-        console.log('Codex: new hooks are skipped until you trust them. Open `codex`, run /hooks, and trust the two LoopGuard hooks.');
+        console.log('Codex: new hooks are skipped until you trust them. Open `codex`, run /hooks, and trust the three LoopGuard hooks.');
       console.log('Restart running agent sessions for hooks to load.');
       return;
     }

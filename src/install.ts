@@ -66,23 +66,35 @@ export function cursorGuarded(): boolean {
   return Array.isArray(list) && list.some((h: any) => isOurs(h?.command) && / --agent cursor\b/.test(h.command));
 }
 
+/**
+ * Hook events LoopGuard installs. Post-tool events only record a hash of the tool's output (progress-aware loop
+ * detection). Codex also has PostToolUseFailure, but its PostToolUse already fires for failing Bash commands.
+ */
+export const CLAUDE_EVENTS = ['PreToolUse', 'PostToolUse', 'PostToolUseFailure', 'Stop'];
+export const CODEX_EVENTS = ['PreToolUse', 'PostToolUse', 'Stop'];
+export const CURSOR_EVENTS = ['preToolUse', 'postToolUse', 'postToolUseFailure', 'stop'];
+
 /** Pure transforms (tested). */
 export function addHooks(agent: Agent, cfg: any, cmd: string): any {
   const c = cfg && typeof cfg === 'object' ? JSON.parse(JSON.stringify(cfg)) : {};
   c.hooks = c.hooks && typeof c.hooks === 'object' ? c.hooks : {};
   if (agent === 'cursor') {
     c.version = c.version ?? 1;
-    for (const ev of ['preToolUse', 'stop']) {
+    for (const ev of CURSOR_EVENTS) {
       const list: any[] = Array.isArray(c.hooks[ev]) ? c.hooks[ev] : [];
       c.hooks[ev] = [...list.filter(h => !isOurs(h?.command)), { command: `${cmd} --event ${ev}` }];
     }
     return c;
   }
-  for (const ev of ['PreToolUse', 'Stop']) {
+  for (const ev of agent === 'claude' ? CLAUDE_EVENTS : CODEX_EVENTS) {
     const groups: any[] = Array.isArray(c.hooks[ev]) ? c.hooks[ev] : [];
     const cleaned = stripGroups(groups);
-    const entry: any = { hooks: [{ type: 'command', command: `${cmd} --event ${ev}`, timeout: 15 }] };
-    if (ev === 'PreToolUse') entry.matcher = agent === 'claude' ? '*' : '.*';
+    const post = /^PostToolUse/.test(ev);
+    const hook: any = { type: 'command', command: `${cmd} --event ${ev}`, timeout: post ? 5 : 15 };
+    // Claude Code can run post-tool hooks in the background, so recording outputs adds no latency there.
+    if (post && agent === 'claude') hook.async = true;
+    const entry: any = { hooks: [hook] };
+    if (ev !== 'Stop') entry.matcher = agent === 'claude' ? '*' : '.*';
     c.hooks[ev] = [...cleaned, entry];
   }
   return c;

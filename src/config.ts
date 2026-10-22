@@ -11,12 +11,14 @@ export interface Config {
     windowSec: number;
     spiralUsd: number;       // session spend increase within spiralWindowSec -> trip (0 = off)
     spiralWindowSec: number;
+    progressAware: boolean;  // identical call doesn't count if files (git) or the tool's output changed since the last one
+    normalizeShell: boolean; // shell commands match after trimming wrappers (bash -c, | tail, 2>&1, npm run test = npm test)
   };
   warnAtPct: number;         // print warning to agent at this % of a cap
 }
 export const DEFAULTS: Config = {
   sessionCapUsd: 25, dailyCapUsd: 100,
-  loop: { enabled: true, maxRepeats: 5, windowSec: 600, spiralUsd: 10, spiralWindowSec: 300 },
+  loop: { enabled: true, maxRepeats: 5, windowSec: 600, spiralUsd: 10, spiralWindowSec: 300, progressAware: true, normalizeShell: true },
   warnAtPct: 80,
 };
 export const configFile = () => path.join(lgDir(), 'config.json');

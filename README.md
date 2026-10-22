@@ -32,7 +32,7 @@ node dist/cli.js uninstall       # removes only LoopGuard entries; --restore put
 ## Commands
 | Command | What it does |
 |---|---|
-| `init [--agent claude,codex,cursor]` | Adds `PreToolUse`+`Stop` hooks (Cursor: `preToolUse`+`stop`). Original file backed up once to `~/.loopguard/backups/`. Idempotent. Refuses to edit invalid JSON. |
+| `init [--agent claude,codex,cursor]` | Adds `PreToolUse`, `PostToolUse`, `PostToolUseFailure` and `Stop` hooks (Codex: `PreToolUse`, `PostToolUse`, `Stop`; Cursor: `preToolUse`, `postToolUse`, `postToolUseFailure`, `stop`). Re-run after upgrading to pick up new hooks. Original file backed up once to `~/.loopguard/backups/`. Idempotent. Refuses to edit invalid JSON. |
 | `--version` | Prints the installed version. |
 | `uninstall [--agent …] [--restore]` | Strips LoopGuard hooks (keeps your other hooks/settings) or restores the original file byte-for-byte. Deletes files LoopGuard created. |
 | `report` | Cross-agent token + estimated $ table. Incremental index in `~/.loopguard/index.json`. |
@@ -48,11 +48,44 @@ node dist/cli.js uninstall       # removes only LoopGuard entries; --restore put
 |---|---|---|
 | `sessionCapUsd` | 25 | Session spend ≥ cap → deny + halt |
 | `dailyCapUsd` | 100 | Today's spend across all agents (local day) ≥ cap → deny + halt |
-| `loop.maxRepeats` / `windowSec` | 5 / 600 | Identical tool call (name+input) N× in window → deny; 3rd consecutive deny → halt |
+| `loop.maxRepeats` / `windowSec` | 5 / 600 | Same tool call N× in window with no progress in between → deny; 3rd consecutive deny → halt |
+| `loop.progressAware` | true | A repeat doesn't count if the git working tree or the tool's output changed since the last identical call (see below) |
+| `loop.normalizeShell` | true | Shell commands match after stripping cosmetic wrappers (`bash -c '…'`, `\| tail -50`, `2>&1`, `npm run test` = `npm test`) |
 | `loop.spiralUsd` / `spiralWindowSec` | 10 / 300 | Session spend rises ≥ $X within window → deny + halt |
 | `warnAtPct` | 80 | Claude Code shows a warning message near a cap |
 
 Trips are logged to `~/.loopguard/trips.jsonl`.
+
+## Loop detection
+A call is "the same" when the tool and its input match. For shell tools (Claude Code/Codex `Bash`, Cursor `Shell`) only
+the command (and Cursor's `working_directory`) counts, after a narrow normalization: whitespace, a `bash -c`/`sh -lc`
+wrapper, a leading `cd <current dir> &&` or `timeout N`, trailing `2>&1`, `| tail …`, `| head …` or `| cat`, and
+`npm run test`/`npm t` → `npm test` (also `pnpm run test`, `yarn run test`). Claude's Bash `description` is ignored.
+Different tools are never merged (`npx jest` and `npm test` stay different).
+
+With `loop.progressAware` on, a repeat only counts if nothing changed since the previous identical call:
+- **Files:** on every `PreToolUse`, LoopGuard fingerprints the git working tree of the hook's `cwd`: `git status`
+  (tracked changes and untracked files) plus a hash of each changed file's contents. It runs with `GIT_OPTIONAL_LOCKS=0`
+  (never takes the index lock) and a 1.5 s timeout, adding about 10 ms in a typical repo. If an edit happened between
+  two identical calls, the count starts over. `.loopguard/` (where the block message suggests a checkpoint note) is
+  ignored. Not a git repo, or git fails/times out → no file signal; repeats count as before.
+- **Output:** the post-tool hooks store a hash of the tool's result after stripping ANSI codes, timestamps, clock
+  times, durations, temp paths, hex ids and pids (other numbers are kept, so `3 failed` → `2 failed` is progress).
+  If the last two identical calls produced different output, the count starts over. What each agent sends:
+
+| Agent | Working dir (files signal) | Output signal |
+|---|---|---|
+| Claude Code | `cwd` on every hook | `PostToolUse` `tool_response`; failed calls via `PostToolUseFailure` `error`. Installed with `async: true`, so they add no latency. |
+| Codex CLI | `cwd` on every hook | `PostToolUse` `tool_response` (fires for failing Bash commands too). Runs synchronously (~0.1 s per tool call). |
+| Cursor | `cwd`, else `tool_input.working_directory`, else `workspace_roots[0]` | `postToolUse` `tool_output` (JSON string), `postToolUseFailure` `error_message`. Synchronous. HTTP MCP tools send a redacted output, so only the files signal applies to them. |
+
+The block message tells the agent why it tripped and what to do: stop rerunning it (including through a different
+command), write down the goal, what was tried, the exact failing output and its hypotheses (in its reply or in
+`.loopguard/checkpoint.md`), then find the root cause before running it again. The 3rd consecutive loop block still halts.
+
+Limits: output that changes on every run for reasons the normalizer doesn't strip (random seeds, shuffled test order)
+reads as progress, so that loop isn't caught; a polling command whose output never changes is caught as before.
+Normalization doesn't see through scripts, aliases, or a different test runner invoked for the same tests.
 
 ## How each agent is enforced
 | Agent | Data read | Block | Halt |
@@ -62,7 +95,7 @@ Trips are logged to `~/.loopguard/trips.jsonl`.
 | Cursor | Token counts Cursor sends to the `stop` hook at the end of each turn (logged to `~/.loopguard/cursor-usage.jsonl`), plus `state.vscdb` → `cursorDiskKV` `bubbleId:*` rows (`tokenCount`; chars/4 estimate when absent). Per chat, the larger of the two is used. | `{"permission":"deny", …}` | Repeated denies |
 
 Notes from testing against the real CLIs (Claude Code 2.1.302, Codex 0.163, Cursor CLI 2026.10.19):
-- **Codex asks you to trust new hooks.** After `loopguard init`, open `codex`, run `/hooks` and trust the two LoopGuard
+- **Codex asks you to trust new hooks.** After `loopguard init`, open `codex`, run `/hooks` and trust the three LoopGuard
   hooks. Until you do, Codex skips them without saying anything in `codex exec`.
 - **Claude Code halts on `continue: false` in recent versions** (verified on 2.1.302). Older builds (for example 2.1.197,
   which npm still installs on Node 20) honor the deny but keep the session going.

@@ -57,7 +57,7 @@ loopguard config set dailyCapUsd 40      # estimated $ per local day, across all
 loopguard report --agent cursor --by session   # what your recent Cursor chats cost, estimated`}</pre>
     <p>Restart Cursor (or reload the window) so it picks up the hooks. With them installed:</p>
     <ul>
-      <li>Once the agent makes the same tool call (same tool, same input) 4 times within 10 minutes with the setting above, that call is denied: <code>LoopGuard: loop detected — identical Shell call 4x in 600s. Blocked; try a different approach.</code></li>
+      <li>Once the agent makes the same tool call 4 times within 10 minutes with the setting above, and nothing changed in between (same files in the git working tree, same output from Cursor’s <code>postToolUse</code> hook), that call is denied with a message telling the agent to stop rerunning it, write down what it knows, and find the root cause first.</li>
       <li>Past the session or daily cap, or after a $10 jump within 5 minutes, every tool call is denied, so the agent can’t run commands or edit files any further (it can still reply in text). Cursor’s hooks have no documented “end the chat” field, so repeated denial is how LoopGuard stops it.</li>
       <li><code>loopguard pause 15</code> lifts enforcement for 15 minutes; <code>loopguard uninstall --agent cursor --restore</code> puts your original <code>hooks.json</code> back.</li>
     </ul>

@@ -93,7 +93,7 @@ loopguard config set sessionCapUsd 10   # estimated $ per session (default 25)
 loopguard config set dailyCapUsd 40     # estimated $ per local day, all guarded agents (default 100)
 loopguard report --by session           # what your recent sessions would have cost at API prices`}</pre>
     <ul>
-      <li>The same tool call 5 times within 10 minutes is denied, and a $10 jump within 5 minutes ends the session (<code>loop.maxRepeats</code>, <code>loop.spiralUsd</code>), which is the usual shape of a session that quietly burns a 5-hour window.</li>
+      <li>The same tool call 5 times within 10 minutes, with no change to the files or its output in between, is denied, and a $10 jump within 5 minutes ends the session (<code>loop.maxRepeats</code>, <code>loop.spiralUsd</code>), which is the usual shape of a session that quietly burns a 5-hour window.</li>
       <li>At 80% of a cap Claude Code shows a warning; at the cap the next tool call is denied and the session is ended with a reason.</li>
       <li><code>loopguard pause 15</code> lifts enforcement for 15 minutes when you do want to keep going.</li>
     </ul>

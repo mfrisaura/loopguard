@@ -1,6 +1,22 @@
 # Changelog
 
-## 0.1.2 (unreleased, not yet on npm)
+## 0.1.3
+Smarter loop detection, from feedback that counting identical calls also blocks legitimate fix-and-rerun cycles.
+- **Progress-aware loops (`loop.progressAware`, default on).** A repeated tool call no longer counts toward a loop if
+  the work changed since the last identical call: the git working tree's contents (fingerprinted at `PreToolUse`) or
+  the tool's normalized output (recorded by new post-tool hooks). Run tests → fix → run tests is no longer a loop;
+  the same failing run with no edits still is. Fails open to the old behavior outside git or if git errors/times out.
+- **New post-tool hooks.** `init` now also installs `PostToolUse` + `PostToolUseFailure` (Claude Code, async), `PostToolUse`
+  (Codex) and `postToolUse` + `postToolUseFailure` (Cursor). They only record an output hash and never block. Re-run
+  `loopguard init` after upgrading; Codex users must trust the new hook in `/hooks`.
+- **Block message says what to do.** On a loop block the agent is told to stop rerunning it (including through another
+  command), write down what it knows (goal, what it tried, the exact failing output, hypotheses) in its reply or
+  `.loopguard/checkpoint.md`, and find the root cause first. The 3rd consecutive block still halts.
+- **Shell one-liner dodge (`loop.normalizeShell`, default on).** `npm test`, `npm run test 2>&1 | tail -50`,
+  `bash -lc 'npm test'`, `cd <cwd> && npm test` and `timeout 300 npm test` now count as the same call. Claude's Bash
+  `description` no longer makes otherwise identical commands look different.
+
+## 0.1.2
 
 Cursor, tested live with `cursor-agent` 2026.10.19 (interactive mode: hooks ran, stop-hook tokens priced, $0.05
 session cap denied the next tool call; `conversation_id` = session id) and against Cursor's hook runner and

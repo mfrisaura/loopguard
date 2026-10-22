@@ -40,7 +40,7 @@ export default function Page() {
         <tr><td>Cursor</td><td><code>~/.cursor/hooks.json</code></td><td><code>preToolUse</code> hook returns <code>{`{"permission": "deny"}`}</code></td><td>Keep denying tool calls</td></tr>
       </tbody>
     </table>
-    <p>The logic a loop guard needs is simple to describe: fingerprint each tool call (tool name + exact input), count identical fingerprints in a recent time window, and deny once the count passes a threshold. For spend, read the agent’s own usage log, price the tokens, and deny once the session or the day passes a dollar cap. The hard parts are the details: three different log formats, de-duplicating streamed messages, staying fast enough to run on every tool call, and never breaking the agent when your hook itself has a bug.</p>
+    <p>The logic a loop guard needs is simple to describe: fingerprint each tool call (tool name + exact input), count identical fingerprints in a recent time window, and deny once the count passes a threshold. Counting alone also blocks the healthy cycle of run tests → fix → run tests, so a better guard only counts a repeat when nothing changed in between: the same files (for example a fingerprint of <code>git status</code> plus the changed files’ contents) and the same output from the last run. It should also treat cosmetic rewordings, like piping the same test command through <code>tail</code>, as the same call. For spend, read the agent’s own usage log, price the tokens, and deny once the session or the day passes a dollar cap. The hard parts are the details: three different log formats, de-duplicating streamed messages, staying fast enough to run on every tool call, and never breaking the agent when your hook itself has a bug.</p>
 
     <h2>Doing it with LoopGuard</h2>
     <p>LoopGuard is an open-source (MIT) CLI that does exactly the above for Claude Code, Codex CLI and Cursor at once. It reads the usage logs the agents already write (no proxy, no API keys, works on subscriptions) and installs itself as a hook in each agent.</p>
@@ -52,7 +52,7 @@ loopguard status    # today's spend vs caps, which agents are guarded, last 5 tr
     <table>
       <thead><tr><th>Rule</th><th>Default</th><th>What happens</th></tr></thead>
       <tbody>
-        <tr><td>Identical tool call repeated</td><td>5× within 10 min</td><td>The call is denied with a message telling the agent to try a different approach. The 3rd denial in a row ends the session.</td></tr>
+        <tr><td>Same tool call repeated with no progress</td><td>5× within 10 min</td><td>The call is denied. A repeat only counts if the git working tree and the tool’s output didn’t change since the last identical call, and <code>npm test</code>, <code>npm run test 2&gt;&amp;1 | tail -50</code> and <code>bash -lc 'npm test'</code> count as the same call. The message tells the agent to stop rerunning, write down what it knows, and find the root cause first. The 3rd denial in a row ends the session.</td></tr>
         <tr><td>Cost spiral</td><td>$10 within 5 min</td><td>Denied and the session is halted.</td></tr>
         <tr><td>Session cap</td><td>$25</td><td>Denied and the session is halted.</td></tr>
         <tr><td>Daily cap (all agents, local day)</td><td>$100</td><td>Denied and the session is halted.</td></tr>
@@ -65,7 +65,7 @@ loopguard config set dailyCapUsd 40
 loopguard config set loop.maxRepeats 4
 loopguard pause 15   # bypass enforcement for 15 minutes when you really mean it
 loopguard resume`}</pre>
-    <p>When a rule trips, the agent sees a plain reason, for example <code>LoopGuard: loop detected — identical Bash call 5x in 600s. Blocked; try a different approach.</code> Every trip is logged to <code>~/.loopguard/trips.jsonl</code>. <code>loopguard uninstall</code> removes only LoopGuard’s hook entries; <code>loopguard uninstall --restore</code> puts the original config files back byte-for-byte.</p>
+    <p>When a rule trips, the agent sees a plain reason, for example <code>LoopGuard: loop detected — the same Bash call ran 5x in 600s with no change to the files or to its output in between. This call was blocked. Don’t rerun it, and don’t rerun the same thing through a different command or wrapper. First write down what you know so far…</code> Every trip is logged to <code>~/.loopguard/trips.jsonl</code>. <code>loopguard uninstall</code> removes only LoopGuard’s hook entries; <code>loopguard uninstall --restore</code> puts the original config files back byte-for-byte.</p>
 
     <p>Each agent also has its own built-in spend controls (monthly account limits, and for Claude Code a per-run cap in print mode). Tool-by-tool setup, native options first: <a href="/guides/claude-code-spending-limit">Claude Code spending limit</a> · <a href="/guides/limit-cursor-agent-costs">limiting Cursor agent costs</a> · <a href="/guides/codex-cli-spending-limit">capping Codex CLI spend</a>.</p>
 

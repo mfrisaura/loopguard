@@ -16,7 +16,7 @@ loopguard report --by agent
 loopguard login --key lg_…   # then: loopguard sync`}</pre></section>
     <section className="grid">
       <div className="card"><h3>Hard caps</h3><p className="mut">Per-session and daily dollar caps across every agent. When a cap trips, the tool call is denied and the session halts.</p></div>
-      <div className="card"><h3>Loop killer</h3><p className="mut">Catches the same tool call repeating and cost spirals ($ per minute), before you notice them in the logs.</p></div>
+      <div className="card"><h3>Loop killer</h3><p className="mut">Catches the same tool call repeating with no progress (same files, same output) and cost spirals ($ per minute), before you notice them in the logs.</p></div>
       <div className="card"><h3>Local first</h3><p className="mut">Reads the logs your agents already write. No API keys, no proxy. Only aggregate numbers ever leave your machine — and only if you turn on sync.</p></div>
       <div className="card"><h3>Away-from-keyboard alerts</h3><p className="mut">Email, Slack or Discord the moment something trips, and pause or resume enforcement from your phone.</p></div>
     </section>

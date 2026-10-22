@@ -5,7 +5,7 @@ export const GUIDES = [
     title: 'How to stop runaway Claude Code, Codex and Cursor agent loops',
     short: 'Stop runaway agent loops',
     description: 'Why AI coding agents get stuck in loops, how to interrupt one now, and how to enforce limits with hooks: repeated-call detection, cost-spiral checks and session/daily dollar caps.',
-    updated: '2026-10-18',
+    updated: '2026-10-22',
   },
   {
     slug: 'track-ai-coding-agent-token-costs',
