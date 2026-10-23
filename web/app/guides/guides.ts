@@ -49,6 +49,20 @@ export const GUIDES = [
     description: 'Per-run caps, job timeouts and key-level spend limits for Claude Code (claude -p), Codex CLI (codex exec) and Cursor CLI in GitHub Actions and other headless runs, plus loop detection with hooks.',
     updated: '2026-10-22',
   },
+  {
+    slug: 'claude-code-stuck-in-loop',
+    title: 'Claude Code stuck in a loop: how to break it and stop it repeating the same command',
+    short: 'Claude Code stuck in a loop',
+    description: 'How to interrupt Claude Code when it keeps rerunning the same failing command, undo what the loop changed with /rewind and git, restart without walking back into it, and make a hook refuse the next no-progress repeat.',
+    updated: '2026-10-23',
+  },
+  {
+    slug: 'codex-usage-limit',
+    title: 'Codex usage limit reached: 5-hour and weekly limits explained',
+    short: 'Codex usage limits',
+    description: 'The 5-hour and weekly Codex windows on ChatGPT plans, what each "You\'ve hit your usage limit" message means, usage limits vs rate limits, how to check /status and /usage, your options when it runs out, and how to catch a looping session early.',
+    updated: '2026-10-23',
+  },
 ] as const;
 export type Guide = (typeof GUIDES)[number];
 export const guide = (slug: Guide['slug']) => GUIDES.find(g => g.slug === slug)!;
