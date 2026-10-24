@@ -63,6 +63,20 @@ export const GUIDES = [
     description: 'The 5-hour and weekly Codex windows on ChatGPT plans, what each "You\'ve hit your usage limit" message means, usage limits vs rate limits, how to check /status and /usage, your options when it runs out, and how to catch a looping session early.',
     updated: '2026-10-23',
   },
+  {
+    slug: 'cursor-agent-stuck-in-loop',
+    title: 'Cursor agent stuck in a loop: how to stop it, roll back, and keep it from repeating',
+    short: 'Cursor agent stuck in a loop',
+    description: 'How to stop or steer the Cursor agent when it keeps rerunning the same failing fix, restore a checkpoint (and what it won\'t undo), restart in a fresh chat without walking back into the loop, and make a hook deny the next no-progress repeat.',
+    updated: '2026-10-24',
+  },
+  {
+    slug: 'claude-code-token-usage',
+    title: 'Why Claude Code uses so many tokens, and how to use fewer',
+    short: 'Claude Code token usage',
+    description: 'Where Claude Code\'s tokens actually go (re-sent context, cache misses, subagent fan-out, thinking, Opus, loops), how to find the culprit with /usage and /context, the changes that cut usage most, and how to cap runaway sessions.',
+    updated: '2026-10-24',
+  },
 ] as const;
 export type Guide = (typeof GUIDES)[number];
 export const guide = (slug: Guide['slug']) => GUIDES.find(g => g.slug === slug)!;
