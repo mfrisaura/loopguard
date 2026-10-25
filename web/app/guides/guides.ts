@@ -77,6 +77,20 @@ export const GUIDES = [
     description: 'Where Claude Code\'s tokens actually go (re-sent context, cache misses, subagent fan-out, thinking, Opus, loops), how to find the culprit with /usage and /context, the changes that cut usage most, and how to cap runaway sessions.',
     updated: '2026-10-24',
   },
+  {
+    slug: 'aider-budget-limit',
+    title: 'How to set a budget limit for Aider',
+    short: 'Aider budget limit',
+    description: 'Aider has no built-in dollar cap. How to put a hard limit on the API key, read Aider\'s per-message and session cost, cut tokens per message with /tokens, /drop and --max-chat-history-tokens, and bound scripted and CI runs.',
+    updated: '2026-10-25',
+  },
+  {
+    slug: 'github-copilot-agent-stuck-in-loop',
+    title: 'GitHub Copilot agent mode stuck in a loop: how to stop it and keep it from repeating',
+    short: 'Copilot agent stuck in a loop',
+    description: 'How to stop Copilot agent mode when it keeps rerunning the same failing fix, restore a checkpoint, restart without walking back into the loop, the settings and premium-request budget that bound it, and a preToolUse hook that denies identical repeats.',
+    updated: '2026-10-25',
+  },
 ] as const;
 export type Guide = (typeof GUIDES)[number];
 export const guide = (slug: Guide['slug']) => GUIDES.find(g => g.slug === slug)!;
