@@ -91,6 +91,20 @@ export const GUIDES = [
     description: 'How to stop Copilot agent mode when it keeps rerunning the same failing fix, restore a checkpoint, restart without walking back into the loop, the settings and premium-request budget that bound it, and a preToolUse hook that denies identical repeats.',
     updated: '2026-10-25',
   },
+  {
+    slug: 'cline-stuck-in-loop',
+    title: 'Cline stuck in a loop: how to stop it, roll back, and cap what it spends',
+    short: 'Cline stuck in a loop',
+    description: 'How to stop Cline when it keeps rerunning the same failing fix, restore a checkpoint (and what it won\'t undo), restart in a fresh task without walking back into the loop, and the key limits, auto-approve settings and hooks that keep the next loop small.',
+    updated: '2026-10-26',
+  },
+  {
+    slug: 'gemini-cli-usage-limit',
+    title: 'Gemini CLI usage limits: daily quotas, the June 2026 change, and keeping costs in check',
+    short: 'Gemini CLI usage limits',
+    description: 'Gemini CLI\'s daily request limits by sign-in type, what changed for free, Pro and Ultra users on June 18, 2026, how to check usage with /stats, and the settings and billing controls that bound a runaway session.',
+    updated: '2026-10-26',
+  },
 ] as const;
 export type Guide = (typeof GUIDES)[number];
 export const guide = (slug: Guide['slug']) => GUIDES.find(g => g.slug === slug)!;
