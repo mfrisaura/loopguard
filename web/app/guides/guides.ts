@@ -105,6 +105,13 @@ export const GUIDES = [
     description: 'Gemini CLI\'s daily request limits by sign-in type, what changed for free, Pro and Ultra users on June 18, 2026, how to check usage with /stats, and the settings and billing controls that bound a runaway session.',
     updated: '2026-10-26',
   },
+  {
+    slug: 'codex-stuck-in-loop',
+    title: 'Codex stuck in a loop: how to stop it, undo it, and keep it from repeating',
+    short: 'Codex stuck in a loop',
+    description: 'How to interrupt Codex CLI when it keeps rerunning the same failing command, undo its edits with /diff and git, restart in a clean chat without walking back into the loop, and make a PreToolUse hook deny the next no-progress repeat.',
+    updated: '2026-10-28',
+  },
 ] as const;
 export type Guide = (typeof GUIDES)[number];
 export const guide = (slug: Guide['slug']) => GUIDES.find(g => g.slug === slug)!;
